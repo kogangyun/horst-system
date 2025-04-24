@@ -82,6 +82,10 @@
       filter: drop-shadow(0 0 10px #00eaff);
     }
   </style>
+
+  <!-- Firebase 및 login.js 연동 -->
+  <script type="module" src="firebase.js"></script>
+  <script type="module" src="login.js"></script>
 </head>
 <body>
   <img src="horst-logo.png" alt="HORST 로고" class="logo" />
@@ -89,7 +93,7 @@
     <h2>HORST 로그인</h2>
     <input type="text" id="username" placeholder="아이디" />
     <input type="password" id="password" placeholder="비밀번호" />
-    <button onclick="login()">로그인</button>
+    <button id="loginBtn">로그인</button>
     <p><a href="signup.html">회원가입</a></p>
 
     <p>★ 회원가입 후 <strong style="color: #00ffff">5,000원 입금</strong> 시 관리자가 승인합니다.<br>
@@ -102,65 +106,5 @@
 
     <p id="error"></p>
   </div>
-
-  <script>
-    function login() {
-      const id = document.getElementById('username').value.trim();
-      const pw = document.getElementById('password').value;
-      const users = JSON.parse(localStorage.getItem('users') || '{}');
-      const blockedUsers = JSON.parse(localStorage.getItem("blockedUsers") || "[]");
-
-      if (blockedUsers.includes(id)) {
-        document.getElementById("error").innerText = "차단된 유저입니다. 관리자에게 문의하세요.";
-        return;
-      }
-
-      if (!users[id]) {
-        document.getElementById('error').innerText = '가입대기 중이거나 존재하지 않는 아이디입니다.';
-        return;
-      }
-
-      if (users[id].password !== pw) {
-        document.getElementById('error').innerText = '비밀번호가 일치하지 않습니다.';
-        return;
-      }
-
-      // ✅ 관리자 자동 승인 및 역할 지정
-      if (id === "admin") {
-        users[id].status = "approved";
-        users[id].role = "admin";
-        localStorage.setItem("users", JSON.stringify(users));
-      }
-
-      if (users[id].status !== 'approved') {
-        document.getElementById('error').innerText = '가입 승인 대기 중입니다.';
-        alert('📢 가입 신청이 완료되었습니다. 승인을 위해 5,000원을 입금해 주세요.');
-        return;
-      }
-
-      const joinedAt = users[id].joinedAt;
-      if (joinedAt) {
-        const today = new Date();
-        const joinedDate = new Date(joinedAt);
-        const diffTime = today - joinedDate;
-        const diffDays = diffTime / (1000 * 60 * 60 * 24);
-        if (diffDays > 30) {
-          document.getElementById("error").innerText = '⛔ 이용 기간이 만료되었습니다. 오픈카톡으로 문의해 연장해 주세요.';
-          return;
-        }
-      } else {
-        users[id].joinedAt = new Date().toISOString();
-        localStorage.setItem('users', JSON.stringify(users));
-      }
-
-      localStorage.setItem('currentUser', id);
-
-      if (users[id].role === 'admin') {
-        location.href = 'admin.html';
-      } else {
-        location.href = 'main.html';
-      }
-    }
-  </script>
 </body>
 </html>

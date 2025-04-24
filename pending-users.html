@@ -5,71 +5,134 @@
   <title>가입 대기자 목록</title>
   <style>
     body {
-      background-color: black;
-      color: gold;
-      font-family: sans-serif;
+      margin: 0;
+      background: linear-gradient(120deg, #000010, #080031, #000010);
+      background-size: 400% 400%;
+      animation: gradientMove 15s ease infinite;
+      font-family: 'Segoe UI', sans-serif;
+      color: #00eaff;
       text-align: center;
     }
+
+    @keyframes gradientMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
     .container {
       max-width: 600px;
       margin: 100px auto;
-      padding: 20px;
-      background-color: #111;
-      border: 1px solid gold;
-      border-radius: 10px;
+      padding: 30px;
+      background: #111;
+      border: 2px solid #00ffff;
+      border-radius: 12px;
+      box-shadow: 0 0 20px #00ffff99;
     }
+
+    h1 {
+      text-shadow: 0 0 8px #00eaff;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      background-color: #000;
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid #00ffff;
+      border-radius: 8px;
+      box-shadow: 0 0 8px #00ffff44;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .user-id {
+      flex: 1;
+      text-align: left;
+      padding-left: 10px;
+    }
+
     button {
-      background-color: gold;
+      background: linear-gradient(90deg, #00eaff, #9f69ff);
       color: black;
       font-weight: bold;
       border: none;
-      padding: 10px 20px;
-      margin-top: 10px;
-      border-radius: 5px;
+      padding: 8px 14px;
+      margin: 0 4px;
+      border-radius: 8px;
       cursor: pointer;
+      box-shadow: 0 0 8px #00eaff;
+    }
+
+    #back-btn {
+      margin-top: 20px;
+      background: #ffaa00;
+      color: black;
+      font-weight: bold;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #ffaa00aa;
     }
   </style>
+  <script type="module" src="firebase.js"></script>
+  <script type="module">
+    import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const db = getDatabase();
+    const userRef = ref(db, 'users');
+    const list = document.getElementById("pending-users-list");
+
+    onValue(userRef, (snapshot) => {
+      list.innerHTML = "";
+      const data = snapshot.val();
+      if (!data) return;
+
+      Object.entries(data).forEach(([id, info]) => {
+        if (info.status === "pending") {
+          const li = document.createElement("li");
+          const span = document.createElement("span");
+          span.className = 'user-id';
+          span.innerText = id;
+
+          const approveBtn = document.createElement("button");
+          approveBtn.innerText = "승인";
+          approveBtn.onclick = () => {
+            set(ref(db, `users/${id}/status`), "approved");
+            alert(`${id}님이 승인되었습니다.`);
+          };
+
+          const rejectBtn = document.createElement("button");
+          rejectBtn.innerText = "거절";
+          rejectBtn.onclick = () => {
+            remove(ref(db, `users/${id}`));
+            alert(`${id}님이 삭제되었습니다.`);
+          };
+
+          li.appendChild(span);
+          li.appendChild(approveBtn);
+          li.appendChild(rejectBtn);
+          list.appendChild(li);
+        }
+      });
+    });
+
+    function goBack() {
+      location.href = "admin.html";
+    }
+    window.goBack = goBack;
+  </script>
 </head>
 <body>
   <div class="container">
     <h1>가입 대기자 목록</h1>
     <ul id="pending-users-list"></ul>
-    <button onclick="goBack()">뒤로가기</button>
+    <button id="back-btn" onclick="goBack()">뒤로가기</button>
   </div>
-
-  <script>
-    const users = JSON.parse(localStorage.getItem("users") || "{}");
-    const pendingList = document.getElementById("pending-users-list");
-
-    // 가입 대기자 목록을 표시
-    Object.entries(users).forEach(([id, info]) => {
-      if (info.status === "pending") {
-        const li = document.createElement("li");
-        li.innerHTML = `${id} <button onclick="approve('${id}')">승인</button> <button onclick="reject('${id}')">거절</button>`;
-        pendingList.appendChild(li);
-      }
-    });
-
-    // 가입 승인 함수
-    function approve(id) {
-      users[id].status = "approved";
-      localStorage.setItem("users", JSON.stringify(users));
-      alert(`${id}님이 승인되었습니다.`);
-      location.reload();
-    }
-
-    // 가입 거절 함수
-    function reject(id) {
-      delete users[id];
-      localStorage.setItem("users", JSON.stringify(users));
-      alert(`${id}님이 삭제되었습니다.`);
-      location.reload();
-    }
-
-    // 뒤로가기
-    function goBack() {
-      location.href = "admin.html"; // 관리자 페이지로 돌아가기
-    }
-  </script>
 </body>
 </html>

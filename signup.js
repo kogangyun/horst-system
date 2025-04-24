@@ -1,3 +1,8 @@
+// signup.js - Firebase 연동 기반 회원가입 처리
+
+import { getDatabase, ref, get, set, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { database } from "./firebase.js";
+
 function signup() {
   const id = document.getElementById("username").value.trim();
   const pw = document.getElementById("password").value;
@@ -25,35 +30,42 @@ function signup() {
     return;
   }
 
-  const users = JSON.parse(localStorage.getItem("users")) || {};
-  if (users[id]) {
-    if (users[id].blocked) {
-      alert("이 아이디는 차단되어 있어 가입할 수 없습니다.");
+  const userRef = ref(database, `users/${id}`);
+  get(userRef).then((snapshot) => {
+    if (snapshot.exists()) {
+      const userData = snapshot.val();
+      if (userData.blocked) {
+        alert("이 아이디는 차단되어 있어 가입할 수 없습니다.");
+      } else {
+        alert("이미 존재하는 아이디입니다.");
+      }
     } else {
-      alert("이미 존재하는 아이디입니다.");
+      const role = id === "admin" ? "admin" : "user";
+      const status = role === "admin" ? "approved" : "pending";
+      const joinedAt = new Date().toISOString();
+
+      const newUser = {
+        password: pw,
+        status,
+        role,
+        blocked: false,
+        joinedAt
+      };
+
+      set(userRef, newUser).then(() => {
+        localStorage.setItem("currentUser", id);
+        if (role === "admin") {
+          location.href = "admin.html";
+        } else {
+          alert("가입이 완료되었습니다! 관리자의 승인을 기다려주세요.");
+          location.href = "index.html";
+        }
+      }).catch((error) => {
+        console.error("가입 중 오류 발생:", error);
+        alert("가입 중 오류가 발생했습니다. 다시 시도해주세요.");
+      });
     }
-    return;
-  }
-
-  // 🔥 관리자 자동 승인 + 자동 로그인
-  const role = id === "admin" ? "admin" : "user";
-  const status = role === "admin" ? "approved" : "pending";
-
-  users[id] = {
-    password: pw,
-    status,
-    role,
-    blocked: false,
-    joinedAt: new Date().toISOString()
-  };
-
-  localStorage.setItem("users", JSON.stringify(users));
-  localStorage.setItem("currentUser", id); // 자동 로그인 처리
-
-  if (role === "admin") {
-    location.href = "admin.html"; // 관리자 페이지 바로 이동
-  } else {
-    alert("가입이 완료되었습니다! 관리자의 승인을 기다려주세요.");
-    location.href = "index.html";
-  }
+  });
 }
+
+window.signup = signup;
