@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HORST 메인 페이지</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(120deg, #000010, #080031, #000010);
+      background-size: 400% 400%;
+      animation: bgMove 15s ease infinite;
+      font-family: 'Orbitron', sans-serif;
+      margin: 0;
+      padding: 0;
+      color: #e3e3e3;
+      text-align: center;
+      overflow-x: hidden;
+    }
+
+    @keyframes bgMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .logo {
+      margin: 40px auto 20px;
+    }
+
+    .logo img {
+      width: 180px;
+      filter: drop-shadow(0 0 10px #00eaff);
+    }
+
+    .box {
+      background: #111;
+      border: 2px solid #7b2ff7;
+      border-radius: 15px;
+      box-shadow: 0 0 25px rgba(123, 47, 247, 0.3);
+      width: 90%;
+      max-width: 700px;
+      margin: 30px auto;
+      padding: 30px 20px;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      color: #7b2ff7;
+      margin-bottom: 10px;
+      text-shadow: 0 0 8px #7b2ff7;
+    }
+
+    button {
+      padding: 12px 24px;
+      margin: 10px;
+      background: linear-gradient(90deg, #00f2ff, #7b2ff7);
+      color: black;
+      font-weight: bold;
+      font-size: 1rem;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+      transition: 0.2s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      opacity: 0.95;
+    }
+
+    input[type="text"], textarea {
+      width: 90%;
+      background: #000;
+      color: #00f2ff;
+      border: 1px solid #7b2ff7;
+      padding: 10px;
+      border-radius: 8px;
+      font-family: 'Orbitron', sans-serif;
+      margin-top: 10px;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      text-align: left;
+      margin-top: 10px;
+    }
+
+    ul li {
+      background: #1e1e1e;
+      padding: 10px;
+      margin-bottom: 8px;
+      border: 1px solid #00f2ff;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">
+    <img src="horst-logo.png" alt="HORST 로고">
+  </div>
+
+  <div class="box" id="welcomeBox"></div>
+
+  <div class="box">
+    <div class="section-title">메뉴</div>
+    <button onclick="location.href='result.html'">📊 경기 결과 입력</button>
+    <button onclick="location.href='ranking.html'">🏆 랭킹 보기</button>
+    <button onclick="location.href='history.html'">📜 전적 보기</button>
+    <button onclick="location.href='clan.html'">🏰 클랜 관리</button>
+    <button onclick="logout()">🚪 로그아웃</button>
+  </div>
+
+  <div class="box">
+    <div class="section-title">🔍 실시간 매칭</div>
+    <p id="matchStatus">현재 대기 중...</p>
+    <p id="realtimeQueueStatus">매칭 대기 인원: 0명</p>
+    <div id="matchTimer"></div>
+    <button onclick="joinRealtimeMatch()">⚔️ 매칭 참가</button>
+    <div id="matchResultBox" style="margin-top: 20px;"></div>
+  </div>
+
+  <div class="box">
+    <div class="section-title">📅 시즌 정보</div>
+    <p id="seasonInfo">시즌 정보 로딩 중...</p>
+  </div>
+
+  <div class="box">
+    <div class="section-title">📢 공지사항</div>
+    <ul id="noticeList"></ul>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

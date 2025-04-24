@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>HORST 로그인</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(120deg, #000010, #080031, #000010);
+      background-size: 400% 400%;
+      animation: gradientMove 15s ease infinite;
+      color: #00eaff;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+    }
+
+    @keyframes gradientMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .login-box {
+      max-width: 400px;
+      margin: 120px auto;
+      background: #111;
+      border: 2px solid #00ffff;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px #00ffff99;
+    }
+
+    .login-box h2 {
+      color: #00eaff;
+      margin-bottom: 20px;
+      text-shadow: 0 0 8px #00eaff;
+    }
+
+    .login-box input {
+      width: 90%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 8px;
+      border: 1px solid #00eaff;
+      background-color: #000;
+      color: #fff;
+      font-size: 16px;
+    }
+
+    .login-box button {
+      padding: 12px 24px;
+      background: linear-gradient(90deg, #00eaff, #9f69ff);
+      color: black;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #00eaff;
+      margin-top: 10px;
+    }
+
+    .login-box a {
+      color: #9f69ff;
+      text-decoration: none;
+    }
+
+    .login-box p {
+      margin-top: 10px;
+      color: #ffaa00;
+      font-size: 14px;
+    }
+
+    #error {
+      margin-top: 12px;
+      color: red;
+    }
+
+    .logo {
+      width: 180px;
+      margin-top: 40px;
+      filter: drop-shadow(0 0 10px #00eaff);
+    }
+  </style>
+</head>
+<body>
+  <img src="horst-logo.png" alt="HORST 로고" class="logo" />
+  <div class="login-box">
+    <h2>HORST 로그인</h2>
+    <input type="text" id="username" placeholder="아이디" />
+    <input type="password" id="password" placeholder="비밀번호" />
+    <button onclick="login()">로그인</button>
+    <p><a href="signup.html">회원가입</a></p>
+
+    <p>★ 회원가입 후 <strong style="color: #00ffff">5,000원 입금</strong> 시 관리자가 승인합니다.<br>
+      <span style="color:#888; font-size: 13px;">※ 첫 달 무료, 이후 30일 경과 시 재입금 필요</span>
+    </p>
+
+    <p style="margin-top: 8px;">
+      ✨ <a href="https://open.kakao.com/o/sn8r4Psh" target="_blank" style="color: #00ffff; font-weight: bold;">오픈카톡으로 문의하기</a>
+    </p>
+
+    <p id="error"></p>
+  </div>
+
+  <script>
+    function login() {
+      const id = document.getElementById('username').value.trim();
+      const pw = document.getElementById('password').value;
+      const users = JSON.parse(localStorage.getItem('users') || '{}');
+      const blockedUsers = JSON.parse(localStorage.getItem("blockedUsers") || "[]");
+
+      if (blockedUsers.includes(id)) {
+        document.getElementById("error").innerText = "차단된 유저입니다. 관리자에게 문의하세요.";
+        return;
+      }
+
+      if (!users[id]) {
+        document.getElementById('error').innerText = '가입대기 중이거나 존재하지 않는 아이디입니다.';
+        return;
+      }
+
+      if (users[id].password !== pw) {
+        document.getElementById('error').innerText = '비밀번호가 일치하지 않습니다.';
+        return;
+      }
+
+      if (users[id].status !== 'approved') {
+        document.getElementById('error').innerText = '가입 승인 대기 중입니다.';
+        alert('📢 가입 신청이 완료되었습니다. 승인을 위해 5,000원을 입금해 주세요.');
+        return;
+      }
+
+      // 유료화 기능: 가입 후 30일 이상 경과 시 로그인 차단
+      const joinedAt = users[id].joinedAt;
+      if (joinedAt) {
+        const today = new Date();
+        const joinedDate = new Date(joinedAt);
+        const diffTime = today - joinedDate;
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        if (diffDays > 30) {
+          document.getElementById("error").innerText = '⛔ 이용 기간이 만료되었습니다. 오픈카톡으로 문의해 연장해 주세요.';
+          return;
+        }
+      } else {
+        // 가입일 정보가 없으면 오늘로 설정
+        users[id].joinedAt = new Date().toISOString();
+        localStorage.setItem('users', JSON.stringify(users));
+      }
+
+      localStorage.setItem('currentUser', id);
+      if (users[id].role === 'admin') {
+        location.href = 'admin.html';
+      } else {
+        location.href = 'main.html';
+      }
+    }
+  </script>
+</body>
+</html>

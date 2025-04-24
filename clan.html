@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>HORST 클랜 관리</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+      color: #e3e3e3;
+      font-family: 'Orbitron', sans-serif;
+      text-align: center;
+      margin: 0;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: linear-gradient(-45deg, #00f2ff, #7b2ff7, #00f2ff, #1a1a1a);
+      background-size: 400% 400%;
+      animation: neonShift 15s ease infinite;
+      z-index: -1;
+      opacity: 0.08;
+    }
+
+    @keyframes neonShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .logo {
+      margin-top: 30px;
+    }
+
+    .logo img {
+      width: 120px;
+    }
+
+    .box {
+      background: #111;
+      border: 2px solid #7b2ff7;
+      border-radius: 12px;
+      box-shadow: 0 0 25px rgba(123, 47, 247, 0.25);
+      width: 90%;
+      max-width: 700px;
+      margin: 30px auto;
+      padding: 30px;
+    }
+
+    input, button {
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    button {
+      background: linear-gradient(90deg, #00f2ff, #7b2ff7);
+      color: black;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      margin: 10px;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      opacity: 0.95;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      text-align: left;
+    }
+
+    ul li {
+      background: #1e1e1e;
+      padding: 10px;
+      margin-bottom: 8px;
+      border: 1px solid #00f2ff;
+      border-radius: 8px;
+    }
+
+    h1 {
+      color: #00f2ff;
+      text-shadow: 0 0 5px #00f2ff;
+    }
+
+    h2 {
+      color: #7b2ff7;
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo">
+    <img src="horst-logo.png" alt="HORST 로고">
+  </div>
+
+  <div class="box">
+    <h1>🛡 클랜 생성 신청</h1>
+    <p>클랜명을 입력해 신청하세요. 클랜장은 첫 번째 신청자입니다.</p>
+    <input type="text" id="clanNameInput" placeholder="클랜명 입력" />
+    <br>
+    <button onclick="requestClan()">신청하기</button>
+  </div>
+
+  <div class="box">
+    <h2>내가 속한 클랜</h2>
+    <ul id="pendingList"></ul>
+  </div>
+
+  <script>
+    const currentUser = localStorage.getItem("currentUser");
+    const users = JSON.parse(localStorage.getItem("users") || "{}");
+    const clanRequests = JSON.parse(localStorage.getItem("clanRequests") || "{}");
+
+    const clanNameInput = document.getElementById("clanNameInput");
+    const pendingList = document.getElementById("pendingList");
+
+    function renderRequests() {
+      pendingList.innerHTML = "";
+      Object.entries(clanRequests).forEach(([clanName, data]) => {
+        const isMyClan = data.applicants.includes(currentUser);
+        const isLeader = data.leader === currentUser;
+
+        if (isMyClan) {
+          const li = document.createElement("li");
+
+          let buttons = "";
+          if (isLeader) {
+            data.pendingMembers.forEach(member => {
+              buttons += `<div>${member} 
+                <button onclick="approveMember('${clanName}', '${member}')">✔</button> 
+                <button onclick="rejectMember('${clanName}', '${member}')">✖</button></div>`;
+            });
+
+            data.members.forEach(member => {
+              if (member !== currentUser) {
+                buttons += `<div>${member} <button onclick="kickMember('${clanName}', '${member}')">추방</button></div>`;
+              }
+            });
+
+            buttons += `
+              <div><button onclick="transferLeadership('${clanName}')">클랜장 양도</button></div>
+              <div><button onclick="disbandClan('${clanName}')">클랜 해체</button></div>`;
+          }
+
+          li.innerHTML = `
+            <strong>${clanName}</strong><br>
+            클랜장: ${data.leader}<br>
+            구성원: ${data.members.join(", ")}<br>
+            ${buttons}`;
+          pendingList.appendChild(li);
+        }
+      });
+    }
+
+    function requestClan() {
+      const name = clanNameInput.value.trim();
+      if (!name) return alert("클랜명을 입력하세요.");
+      if (clanRequests[name]) return alert("이미 존재하는 클랜입니다.");
+
+      clanRequests[name] = {
+        leader: currentUser,
+        members: [currentUser],
+        applicants: [currentUser],
+        pendingMembers: []
+      };
+
+      users[currentUser].clan = name;
+      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
+      localStorage.setItem("users", JSON.stringify(users));
+      renderRequests();
+    }
+
+    function applyToClan(clanName) {
+      const data = clanRequests[clanName];
+      if (!data.pendingMembers.includes(currentUser)) {
+        data.pendingMembers.push(currentUser);
+        localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
+        alert("클랜 가입 신청이 완료되었습니다.");
+        renderRequests();
+      }
+    }
+
+    function approveMember(clanName, member) {
+      const data = clanRequests[clanName];
+      data.pendingMembers = data.pendingMembers.filter(m => m !== member);
+      data.members.push(member);
+      users[member].clan = clanName;
+      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
+      localStorage.setItem("users", JSON.stringify(users));
+      renderRequests();
+    }
+
+    function rejectMember(clanName, member) {
+      const data = clanRequests[clanName];
+      data.pendingMembers = data.pendingMembers.filter(m => m !== member);
+      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
+      renderRequests();
+    }
+
+    function kickMember(clanName, member) {
+      const data = clanRequests[clanName];
+      data.members = data.members.filter(m => m !== member);
+      delete users[member].clan;
+      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
+      localStorage.setItem("users", JSON.stringify(users));
+      renderRequests();
+    }
+
+    function disbandClan(clanName) {
+      if (!confirm("정말 이 클랜을 해체하시겠습니까?")) return;
+      const data = clanRequests[clanName];
+      [...data.members, ...data.pendingMembers].forEach(member => {
+        if (users[member]) delete users[member].clan;
+      });
+      delete clanRequests[clanName];
+      localStorage.setItem("users", JSON.stringify(users));
+      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
+      renderRequests();
+    }
+
+    function transferLeadership(clanName) {
+      const data = clanRequests[clanName];
+      const newLeader = prompt("양도할 클랜장의 닉네임을 입력하세요:");
+      if (!data.members.includes(newLeader)) return alert("해당 사용자는 클랜 구성원이 아닙니다.");
+      data.leader = newLeader;
+      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
+      alert("클랜장이 변경되었습니다.");
+      renderRequests();
+    }
+
+    renderRequests();
+  </script>
+</body>
+</html>

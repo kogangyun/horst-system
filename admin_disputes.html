@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이의제기 관리</title>
+  <style>
+    body {
+      background-color: black;
+      color: gold;
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 100px auto;
+      padding: 20px;
+      background-color: #111;
+      border: 1px solid gold;
+      border-radius: 10px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid gold;
+    }
+    th {
+      background-color: #222;
+    }
+    button {
+      background-color: gold;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 5px;
+    }
+    button:hover {
+      background-color: #ffd700;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>이의제기 목록</h1>
+    <table>
+      <thead>
+        <tr>
+          <th>경기 ID</th>
+          <th>날짜</th>
+          <th>상태</th>
+          <th>처리</th>
+        </tr>
+      </thead>
+      <tbody id="disputeBody">
+        <!-- 이의제기 항목이 여기에 표시됩니다 -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 관리자 접근 제한 로직 -->
+  <script>
+    const currentUser = localStorage.getItem("currentUser");
+    const users = JSON.parse(localStorage.getItem("users")) || {};
+    const user = users[currentUser];
+
+    if (!user || user.role !== "admin") {
+      alert("관리자만 접근할 수 있습니다.");
+      location.href = "index.html";
+    }
+  </script>
+
+  <!-- 실제 데이터 표시 로직 (예시용) -->
+  <script>
+    const disputes = JSON.parse(localStorage.getItem("disputes")) || [];
+    const tbody = document.getElementById("disputeBody");
+
+    if (disputes.length === 0) {
+      tbody.innerHTML = "<tr><td colspan='4'>등록된 이의제기가 없습니다.</td></tr>";
+    } else {
+      disputes.forEach(d => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${d.matchId}</td>
+          <td>${d.date}</td>
+          <td>${d.status}</td>
+          <td><button onclick="handleDispute('${d.matchId}')">처리</button></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function handleDispute(matchId) {
+      alert(`경기 ${matchId} 처리 로직을 연결하세요.`);
+      // 실제 처리 로직은 별도 구현 필요
+    }
+    
+  </script>
+
+  <!-- 외부 JS 로드 -->
+  <!-- <script src="admin_disputes.js"></script> -->
+</body>
+</html>

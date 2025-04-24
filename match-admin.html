@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>HORST 관리자 매칭</title>
+  <style>
+    body {
+      background: black;
+      color: yellow;
+      font-family: sans-serif;
+      text-align: center;
+    }
+    .box {
+      border: 1px solid yellow;
+      width: 500px;
+      margin: 100px auto;
+      padding: 20px;
+      background: #111;
+    }
+    button {
+      background: yellow;
+      border: none;
+      padding: 8px 15px;
+      margin-top: 10px;
+      cursor: pointer;
+    }
+    .team {
+      margin: 10px 0;
+    }
+    .player {
+      display: inline-block;
+      padding: 5px 10px;
+      border: 1px solid yellow;
+      margin: 2px;
+    }
+  </style>
+</head>
+<body>
+  <h1>HORST 티어 기반 자동 매칭</h1>
+  <div class="box">
+    <p><strong>기준 티어:</strong> D / 허용 범위: ±2</p>
+    <div class="team" id="teamA"><strong>Team A:</strong></div>
+    <div class="team" id="teamB"><strong>Team B:</strong></div>
+    <button onclick="autoMatch()">매칭 확정</button>
+  </div>
+
+  <script>
+    function autoMatch() {
+      const users = JSON.parse(localStorage.getItem('users') || '{}');
+      const tierOrder = ['d', 'c', 'b', 'a', 's', 'ss'];
+      const baseTier = 'd';
+      const tierRange = 2;
+
+      const userList = Object.entries(users)
+        .filter(([id, info]) => info.status === 'approved')
+        .map(([id, info]) => ({ id, tier: info.tier }));
+
+      const baseIndex = tierOrder.indexOf(baseTier);
+      const allowedTiers = tierOrder.slice(Math.max(0, baseIndex - tierRange), baseIndex + tierRange + 1);
+
+      const candidates = userList.filter(user => allowedTiers.includes(user.tier));
+      if (candidates.length < 10) {
+        alert('매칭 실패: 기준 범위 내 유저가 10명 미만입니다.');
+        return;
+      }
+
+      const shuffled = candidates.sort(() => Math.random() - 0.5).slice(0, 10);
+      const teamA = shuffled.slice(0, 5);
+      const teamB = shuffled.slice(5);
+
+      document.getElementById('teamA').innerHTML = "<strong>Team A:</strong> " + teamA.map(u => `<span class="player">${u.id}</span>`).join('');
+      document.getElementById('teamB').innerHTML = "<strong>Team B:</strong> " + teamB.map(u => `<span class="player">${u.id}</span>`).join('');
+
+      const match = {
+        id: `match-${Date.now()}`,
+        teamA: teamA.map(u => u.id),
+        teamB: teamB.map(u => u.id),
+        results: {}
+      };
+
+      localStorage.setItem('currentMatch', JSON.stringify(match));
+      alert("매칭 완료! result.html로 이동하세요.");
+      location.href = 'result.html';
+    }
+  </script>
+</body>
+</html>
+

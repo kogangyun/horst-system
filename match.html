@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>5:5 실시간 매칭</title>
+  <style>
+    body {
+      background: black;
+      color: gold;
+      font-family: sans-serif;
+      text-align: center;
+      padding-top: 80px;
+    }
+    .box {
+      background: #111;
+      border: 2px solid gold;
+      border-radius: 12px;
+      width: 480px;
+      margin: 0 auto;
+      padding: 30px;
+    }
+    button {
+      background: gold;
+      color: black;
+      font-weight: bold;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 15px;
+    }
+    #timer {
+      font-size: 20px;
+      margin-top: 10px;
+    }
+    #matchResult {
+      margin-top: 30px;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>🔍 5:5 실시간 매칭</h2>
+    <p id="statusText">현재 대기 중...</p>
+    <div id="timer"></div>
+    <button onclick="joinMatch()">매칭 참가</button>
+    <div id="matchResult"></div>
+  </div>
+
+  <script src="match.js"></script>
+</body>
+</html>
+

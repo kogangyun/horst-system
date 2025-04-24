@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HORST 관리자 페이지</title>
+  <style>
+    .neon-box {
+      border: 2px solid #00ffff;
+      background: #0a0a1a;
+      padding: 20px;
+      border-radius: 12px;
+      width: 600px;
+      margin: 40px auto;
+      box-shadow: 0 0 15px #00ffff88;
+    }
+
+    .neon-input {
+  width: 100%;
+  background: #111;
+  color: #0ff;
+  font-size: 16px;
+  border: 1px solid #0ff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px #0ff inset; /* ✅ 수정됨 */
+}
+
+    .neon-btn {
+      background: #0ff;
+      color: black;
+      font-weight: bold;
+      padding: 10px 20px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+    }
+
+    .season-note {
+      margin-top: 12px;
+      font-size: 14px;
+      color: #00e6e6;
+    }
+
+    body {
+      margin: 0;
+      background: linear-gradient(120deg, #000010, #080031, #000010);
+      background-size: 400% 400%;
+      animation: gradientMove 15s ease infinite;
+      color: #00eaff;
+      font-family: 'Segoe UI', sans-serif;
+      text-align: center;
+    }
+
+    @keyframes gradientMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    header {
+      padding: 30px 0 10px;
+    }
+
+    header img {
+      width: 180px;
+      max-width: 90%;
+      filter: drop-shadow(0 0 10px #00eaff);
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      margin-top: 10px;
+      color: #9f69ff;
+      text-shadow: 0 0 12px #9f69ff;
+    }
+
+    .section {
+      border: 2px solid #9f69ff;
+      background-color: rgba(0, 0, 0, 0.65);
+      border-radius: 15px;
+      width: 600px;
+      margin: 30px auto;
+      padding: 30px 20px;
+      box-shadow: 0 0 15px #9f69ff;
+    }
+
+    .section h2 {
+      color: #00eaff;
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+      text-shadow: 0 0 5px #00eaff;
+    }
+
+    button {
+      background: linear-gradient(90deg, #00eaff, #9f69ff);
+      color: black;
+      font-weight: bold;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 10px 5px;
+      font-size: 1rem;
+      box-shadow: 0 0 8px #00eaff;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    textarea {
+      width: 90%;
+      height: 100px;
+      font-size: 1rem;
+      padding: 10px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border: 2px solid #9f69ff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      padding: 10px;
+      border: 1px solid #00eaff;
+    }
+
+    th {
+      background-color: #121212;
+      color: #00eaff;
+    }
+
+    input[type="text"] {
+      width: 70%;
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #00eaff;
+      background: #000;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="horst-logo.png" alt="HORST 로고" />
+    <h1>HORST 관리자 페이지</h1>
+  </header>
+
+  <div class="section">
+    <h2>가입 대기자 관리</h2>
+    <button onclick="location.href='pending-users.html'">가입 대기자 목록</button>
+  </div>
+
+  <div class="section">
+    <h2>클랜 신청 관리</h2>
+    <ul id="pendingClans" style="list-style: none; padding: 0;"></ul>
+  </div>
+
+  <div class="section">
+    <h2>📢 공지사항 관리</h2>
+    <form id="noticeForm">
+      <textarea id="noticeContent" placeholder="공지 내용을 입력하세요."></textarea><br>
+      <button type="submit">공지 추가</button>
+    </form>
+    <ul id="noticeList" style="text-align: left; padding-left: 20px;"></ul>
+  </div>
+
+  <div class="section">
+    <h2>⚠️ 이의 제기 관리</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>매치 ID</th>
+          <th>상태</th>
+          <th>처리</th>
+        </tr>
+      </thead>
+      <tbody id="disputeList"></tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h2>🚫 문제 유저 관리</h2>
+    <input type="text" id="blockUser" placeholder="아이디 입력" />
+    <button onclick="blockUser()">유저 차단</button>
+    <ul id="blockedUsers"></ul>
+  </div>
+
+  <div class="section">
+    <h2>⚔️ 매칭 통제 시스템</h2>
+    <button onclick="location.href='admin-match.html'">매칭 결과 관리</button>
+  </div>
+
+  <!-- 시즌 정보 -->
+  <div class="neon-box season-box">
+    <h2>📅 시즌 정보</h2>
+    <textarea id="seasonInput" rows="3" class="neon-input"></textarea><br>
+    <button class="neon-btn" onclick="saveSeason()">📂 저장</button>
+    <p id="seasonNotice" class="season-note"></p>
+  </div>
+
+  <script>
+    const savedSeason = localStorage.getItem("seasonText") || "시즌 1 : 2025년 5월 1일 ~ 6월 30일";
+    const lastReset = localStorage.getItem("lastSeasonReset") || "2025-05-01";
+    document.getElementById("seasonInput").value = savedSeason;
+
+    function saveSeason() {
+      const newText = document.getElementById("seasonInput").value.trim();
+      if (!newText) return alert("내용을 입력하세요.");
+      localStorage.setItem("seasonText", newText);
+      alert("시즌 정보가 저장되었습니다.");
+    }
+
+    function checkSeasonReset() {
+      const today = new Date();
+      const last = new Date(lastReset);
+      const diffMonth = today.getFullYear() * 12 + today.getMonth() - (last.getFullYear() * 12 + last.getMonth());
+
+      if (diffMonth >= 2) {
+        const users = JSON.parse(localStorage.getItem("users") || "{}");
+        Object.keys(users).forEach(uid => {
+          users[uid].points = 1000;
+        });
+
+        const nextResetDate = today.toISOString().split("T")[0];
+        localStorage.setItem("users", JSON.stringify(users));
+        localStorage.setItem("lastSeasonReset", nextResetDate);
+        alert("💥 시즌 리셌스 완료! 모든 유저의 점수가 초기화되었습니다.");
+        document.getElementById("seasonNotice").innerText = `마지막 리셌스 날짜: ${nextResetDate}`;
+      } else {
+        document.getElementById("seasonNotice").innerText = `마지막 리셌스 날짜: ${lastReset}`;
+      }
+    }
+
+    checkSeasonReset();
+  </script>
+  <script src="admin.js"></script>
+</body>
+</html>

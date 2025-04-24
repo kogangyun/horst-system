@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>관리자 매칭 통제</title>
+  <style>
+    body { background: black; color: gold; font-family: sans-serif; text-align: center; }
+    .section { margin: 30px auto; padding: 20px; background: #111; border: 1px solid gold; width: 600px; border-radius: 10px; }
+    input, select, button { margin: 5px; padding: 10px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>🛠️ 관리자 매칭 통제 시스템</h1>
+
+  <div class="section">
+    <h2>🔧 사용자 점수 조정</h2>
+    <input type="text" id="targetUser" placeholder="사용자 ID" />
+    <input type="number" id="scoreChange" placeholder="점수 (+/-)" />
+    <button onclick="updateUserScore()">점수 수정</button>
+    <p id="scoreResult"></p>
+  </div>
+
+  <div class="section">
+    <h2>📂 매칭 기록 삭제</h2>
+    <input type="text" id="matchIdToDelete" placeholder="매칭 ID" />
+    <button onclick="deleteMatch()">매칭 삭제</button>
+    <p id="matchDeleteStatus"></p>
+  </div>
+
+  <div class="section">
+    <h2>⚖️ 승/패 조작</h2>
+    <input type="text" id="matchIdEdit" placeholder="매칭 ID" />
+    <input type="text" id="editPlayer" placeholder="참가자 ID" />
+    <select id="editResult">
+      <option value="win">WIN</option>
+      <option value="lose">LOSE</option>
+    </select>
+    <button onclick="editMatchResult()">결과 조작</button>
+    <p id="editStatus"></p>
+  </div>
+
+  <script src="admin-match.js"></script>
+</body>
+</html>

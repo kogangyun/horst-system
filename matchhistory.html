@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>HORST 전적 보기</title>
+  <style>
+    body {
+      background-color: black;
+      color: gold;
+      font-family: sans-serif;
+      text-align: center;
+    }
+    h1 {
+      margin-top: 30px;
+    }
+    table {
+      margin: 30px auto;
+      width: 90%;
+      border-collapse: collapse;
+    }
+    th, td {
+      border: 1px solid gold;
+      padding: 10px;
+    }
+    th {
+      background-color: #222;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>📜 내 매칭 전적</h1>
+  <table>
+    <thead>
+      <tr>
+        <th>날짜</th>
+        <th>팀 A</th>
+        <th>팀 B</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
+
+  <script>
+    const currentUser = localStorage.getItem("currentUser");
+    const history = JSON.parse(localStorage.getItem("matchHistory") || "[]");
+    const tbody = document.getElementById("historyBody");
+
+    const myMatches = history.filter(match =>
+      [...match.teamA, ...match.teamB].includes(currentUser)
+    );
+
+    if (myMatches.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="3">참여한 매치가 없습니다.</td></tr>`;
+    } else {
+      myMatches.reverse().forEach(match => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${new Date(match.timestamp).toLocaleString()}</td>
+          <td>${match.teamA.join(", ")}</td>
+          <td>${match.teamB.join(", ")}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+  </script>
+</body>
+</html>

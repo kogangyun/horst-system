@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>HORST 클랜 상세 정보</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+      color: #e3e3e3;
+      font-family: 'Orbitron', sans-serif;
+      text-align: center;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: linear-gradient(-45deg, #00f2ff, #7b2ff7, #00f2ff, #1a1a1a);
+      background-size: 400% 400%;
+      animation: neonShift 15s ease infinite;
+      z-index: -1;
+      opacity: 0.08;
+    }
+
+    @keyframes neonShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    h1 {
+      color: #7b2ff7;
+      font-size: 2rem;
+      margin-top: 40px;
+      text-shadow: 0 0 10px #7b2ff7;
+    }
+
+    h2 {
+      color: #00f2ff;
+      margin-bottom: 16px;
+      text-shadow: 0 0 6px #00f2ff;
+    }
+
+    .box {
+      background: #111;
+      border: 2px solid #7b2ff7;
+      border-radius: 12px;
+      box-shadow: 0 0 25px rgba(123, 47, 247, 0.25);
+      width: 90%;
+      max-width: 700px;
+      margin: 30px auto;
+      padding: 30px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin: 10px 5px;
+      background: linear-gradient(90deg, #00f2ff, #7b2ff7);
+      color: black;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 8px #00f2ff;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      opacity: 0.95;
+    }
+
+    select {
+      padding: 10px;
+      font-size: 1rem;
+      border-radius: 6px;
+      background: #000;
+      color: #00f2ff;
+      border: 1px solid #7b2ff7;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      background: #1e1e1e;
+      border: 1px solid #00f2ff;
+      margin: 8px auto;
+      padding: 12px;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 520px;
+      box-shadow: 0 0 8px rgba(0, 242, 255, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🏰 HORST 클랜 상세 페이지</h1>
+
+  <div class="box">
+    <h2>🔍 클랜 정보</h2>
+    <div id="clanInfo">로딩 중...</div>
+  </div>
+
+  <div class="box">
+    <h2>⚙️ 클랜 관리</h2>
+    <div id="clanActions"></div>
+  </div>
+
+  <div class="box">
+    <button onclick="location.href='main.html'">🔙 메인으로 돌아가기</button>
+  </div>
+
+  <script src="clan-detail.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HORST 경기 결과 입력</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(135deg, #000010, #080031, #000010);
+      background-size: 400% 400%;
+      animation: bgMove 15s ease infinite;
+      font-family: 'Orbitron', sans-serif;
+      color: #e3e3e3;
+      text-align: center;
+    }
+
+    @keyframes bgMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .container {
+      max-width: 650px;
+      margin: 100px auto;
+      padding: 40px 30px;
+      background: rgba(17, 17, 17, 0.95);
+      border: 2px solid #7b2ff7;
+      border-radius: 15px;
+      box-shadow: 0 0 25px rgba(123, 47, 247, 0.4);
+    }
+
+    h1 {
+      color: #00f2ff;
+      text-shadow: 0 0 8px #00f2ff;
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+    }
+
+    p {
+      color: #aaa;
+      font-size: 1rem;
+      margin-bottom: 20px;
+    }
+
+    select, button {
+      padding: 12px 20px;
+      font-size: 1rem;
+      margin: 10px 5px;
+      border-radius: 8px;
+      border: none;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    select {
+      background: #000;
+      color: #00f2ff;
+      border: 1px solid #7b2ff7;
+    }
+
+    button {
+      background: linear-gradient(90deg, #00f2ff, #7b2ff7);
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+    }
+
+    button:hover {
+      opacity: 0.95;
+      transform: scale(1.05);
+    }
+
+    #manualDisputeBtn {
+      background-color: #ff2f5e;
+      color: white;
+    }
+
+    #manualDisputeNotice {
+      margin-top: 15px;
+      color: #ff7070;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>HORST 경기 결과 입력</h1>
+    <p>⚔ 모든 참가자가 결과를 입력해야 확정됩니다.</p>
+    <div id="resultForm"></div>
+  </div>
+
+  <script src="result.js"></script>
+</body>
+</html>

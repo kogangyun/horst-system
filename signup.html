@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HORST 회원가입</title>
+  <style>
+    body {
+      margin: 0;
+      background: linear-gradient(120deg, #000010, #080031, #000010);
+      background-size: 400% 400%;
+      animation: bgMove 15s ease infinite;
+      font-family: 'Segoe UI', sans-serif;
+      color: #00eaff;
+      text-align: center;
+    }
+
+    @keyframes bgMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    header {
+      margin-top: 60px;
+    }
+
+    header img {
+      width: 180px;
+      filter: drop-shadow(0 0 10px #00eaff);
+    }
+
+    h2 {
+      font-size: 1.8rem;
+      color: #9f69ff;
+      text-shadow: 0 0 10px #9f69ff;
+      margin: 20px 0;
+    }
+
+    .signup-box {
+      width: 400px;
+      background-color: rgba(0, 0, 0, 0.65);
+      margin: 40px auto;
+      padding: 30px 20px;
+      border: 2px solid #9f69ff;
+      border-radius: 15px;
+      box-shadow: 0 0 15px #9f69ff;
+    }
+
+    input {
+      width: 80%;
+      padding: 12px;
+      font-size: 1rem;
+      margin: 10px 0;
+      border: 1px solid #00eaff;
+      border-radius: 8px;
+      background-color: #000;
+      color: #fff;
+    }
+
+    button {
+      background: linear-gradient(90deg, #00eaff, #9f69ff);
+      border: none;
+      padding: 12px 30px;
+      font-size: 1rem;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 15px;
+      color: black;
+      box-shadow: 0 0 8px #00eaff;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    p {
+      margin-top: 15px;
+    }
+
+    a {
+      color: #9f69ff;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <img src="horst-logo.png" alt="HORST 로고" />
+    <h2>HORST 회원가입</h2>
+  </header>
+
+  <div class="signup-box">
+    <input type="text" id="username" placeholder="아이디" />
+    <input type="password" id="password" placeholder="비밀번호" />
+    <input type="password" id="confirm" placeholder="비밀번호 확인" />
+    <button onclick="signup()">가입하기</button>
+    <p><a href="index.html">로그인으로 돌아가기</a></p>
+  </div>
+
+  <script>
+    const currentUser = localStorage.getItem("currentUser");
+    if (currentUser) {
+      alert("이미 로그인된 상태입니다.");
+      location.href = "main.html";
+    }
+  </script>
+
+  <script src="signup.js"></script>
+</body>
+</html>
