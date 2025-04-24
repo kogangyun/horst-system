@@ -16,15 +16,15 @@
     }
 
     .neon-input {
-  width: 100%;
-  background: #111;
-  color: #0ff;
-  font-size: 16px;
-  border: 1px solid #0ff;
-  padding: 10px 14px;
-  border-radius: 8px;
-  box-shadow: 0 0 10px #0ff inset; /* ✅ 수정됨 */
-}
+      width: 100%;
+      background: #111;
+      color: #0ff;
+      font-size: 16px;
+      border: 1px solid #0ff;
+      padding: 10px 14px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px #0ff inset;
+    }
 
     .neon-btn {
       background: #0ff;
@@ -207,6 +207,12 @@
     <p id="seasonNotice" class="season-note"></p>
   </div>
 
+  <!-- ✅ 로그아웃 버튼 -->
+  <div class="section">
+    <h2>🔚 로그아웃</h2>
+    <button onclick="logout()">로그아웃</button>
+  </div>
+
   <script>
     const savedSeason = localStorage.getItem("seasonText") || "시즌 1 : 2025년 5월 1일 ~ 6월 30일";
     const lastReset = localStorage.getItem("lastSeasonReset") || "2025-05-01";
@@ -233,11 +239,17 @@
         const nextResetDate = today.toISOString().split("T")[0];
         localStorage.setItem("users", JSON.stringify(users));
         localStorage.setItem("lastSeasonReset", nextResetDate);
-        alert("💥 시즌 리셌스 완료! 모든 유저의 점수가 초기화되었습니다.");
-        document.getElementById("seasonNotice").innerText = `마지막 리셌스 날짜: ${nextResetDate}`;
+        alert("💥 시즌 리셋 완료! 모든 유저의 점수가 초기화되었습니다.");
+        document.getElementById("seasonNotice").innerText = `마지막 리셋 날짜: ${nextResetDate}`;
       } else {
-        document.getElementById("seasonNotice").innerText = `마지막 리셌스 날짜: ${lastReset}`;
+        document.getElementById("seasonNotice").innerText = `마지막 리셋 날짜: ${lastReset}`;
       }
+    }
+
+    function logout() {
+      localStorage.removeItem("currentUser");
+      alert("로그아웃 되었습니다.");
+      location.href = "index.html";
     }
 
     checkSeasonReset();

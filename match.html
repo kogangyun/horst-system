@@ -1,52 +1,73 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
-  <title>5:5 실시간 매칭</title>
+  <meta charset="UTF-8">
+  <title>매칭 대기</title>
   <style>
     body {
-      background: black;
-      color: gold;
-      font-family: sans-serif;
+      background: linear-gradient(120deg, #000010, #080031, #000010);
+      background-size: 400% 400%;
+      animation: bgMove 15s ease infinite;
+      font-family: 'Orbitron', sans-serif;
+      color: #e3e3e3;
       text-align: center;
-      padding-top: 80px;
+      margin: 0;
+      padding: 40px 0;
     }
-    .box {
+
+    @keyframes bgMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .match-box {
       background: #111;
-      border: 2px solid gold;
+      border: 2px solid #00f2ff;
       border-radius: 12px;
-      width: 480px;
-      margin: 0 auto;
       padding: 30px;
+      width: 500px;
+      margin: 0 auto;
+      box-shadow: 0 0 20px rgba(0, 242, 255, 0.4);
     }
+
+    h1 {
+      font-size: 2rem;
+      color: #00f2ff;
+      text-shadow: 0 0 8px #00f2ff;
+    }
+
+    #statusText, #timer {
+      font-size: 20px;
+      margin: 20px 0;
+    }
+
     button {
-      background: gold;
+      background: linear-gradient(90deg, #00f2ff, #7b2ff7);
       color: black;
       font-weight: bold;
       padding: 12px 24px;
+      font-size: 1rem;
       border: none;
       border-radius: 8px;
       cursor: pointer;
-      margin-top: 15px;
+      box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
     }
-    #timer {
-      font-size: 20px;
-      margin-top: 10px;
-    }
+
     #matchResult {
       margin-top: 30px;
+      font-size: 16px;
     }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h2>🔍 5:5 실시간 매칭</h2>
+  <div class="match-box">
+    <h1>🔍 5:5 실시간 매칭</h1>
     <p id="statusText">현재 대기 중...</p>
     <div id="timer"></div>
     <button onclick="joinMatch()">매칭 참가</button>
     <div id="matchResult"></div>
   </div>
-
   <script src="match.js"></script>
 </body>
 </html>

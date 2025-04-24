@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>HORST 로그인</title>
   <link rel="stylesheet" href="style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
       margin: 0;
@@ -106,5 +107,23 @@
 
     <p id="error"></p>
   </div>
+
+  <!-- Enter 키 로그인 기능 -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const usernameInput = document.getElementById("username");
+      const passwordInput = document.getElementById("password");
+      const loginBtn = document.getElementById("loginBtn");
+
+      function tryLoginOnEnter(e) {
+        if (e.key === "Enter" || e.keyCode === 13) {
+          loginBtn.click();
+        }
+      }
+
+      usernameInput.addEventListener("keydown", tryLoginOnEnter);
+      passwordInput.addEventListener("keydown", tryLoginOnEnter);
+    });
+  </script>
 </body>
 </html>

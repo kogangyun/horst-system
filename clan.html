@@ -12,7 +12,6 @@
       text-align: center;
       margin: 0;
     }
-
     body::before {
       content: "";
       position: fixed;
@@ -24,21 +23,17 @@
       z-index: -1;
       opacity: 0.08;
     }
-
     @keyframes neonShift {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-
     .logo {
       margin-top: 30px;
     }
-
     .logo img {
       width: 120px;
     }
-
     .box {
       background: #111;
       border: 2px solid #7b2ff7;
@@ -49,7 +44,6 @@
       margin: 30px auto;
       padding: 30px;
     }
-
     input, button {
       margin-top: 10px;
       padding: 10px;
@@ -57,7 +51,6 @@
       border-radius: 5px;
       font-family: 'Orbitron', sans-serif;
     }
-
     button {
       background: linear-gradient(90deg, #00f2ff, #7b2ff7);
       color: black;
@@ -67,18 +60,15 @@
       margin: 10px;
       box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
     }
-
     button:hover {
       transform: scale(1.05);
       opacity: 0.95;
     }
-
     ul {
       list-style: none;
       padding: 0;
       text-align: left;
     }
-
     ul li {
       background: #1e1e1e;
       padding: 10px;
@@ -86,23 +76,114 @@
       border: 1px solid #00f2ff;
       border-radius: 8px;
     }
-
     h1 {
       color: #00f2ff;
       text-shadow: 0 0 5px #00f2ff;
     }
-
     h2 {
       color: #7b2ff7;
       margin-top: 30px;
     }
   </style>
+  <script type="module">
+    import { getDatabase, ref, onValue, set, get, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { database } from './firebase.js';
+
+    const currentUser = localStorage.getItem("currentUser");
+    const clanNameInput = document.getElementById("clanNameInput");
+    const pendingList = document.getElementById("pendingList");
+
+    const clansRef = ref(database, 'clans');
+    const usersRef = ref(database, 'users');
+
+    async function renderRequests() {
+      pendingList.innerHTML = "";
+      const snapshot = await get(clansRef);
+      const userSnap = await get(ref(database, `users/${currentUser}`));
+      if (!snapshot.exists() || !userSnap.exists()) return;
+
+      const clanData = snapshot.val();
+      const user = userSnap.val();
+      const myClan = user.clan;
+
+      Object.entries(clanData).forEach(([clanName, data]) => {
+        if (clanName === myClan) {
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <strong>${clanName}</strong><br>
+            클랜장: ${data.leader}<br>
+            구성원: ${(data.members || []).join(", ")}<br>
+          `;
+
+          if (data.leader === currentUser) {
+            (data.pending || []).forEach(member => {
+              li.innerHTML += `<div>${member}
+                <button onclick="approve('${clanName}', '${member}')">✔</button>
+                <button onclick="reject('${clanName}', '${member}')">✖</button>
+              </div>`;
+            });
+          }
+
+          pendingList.appendChild(li);
+        }
+      });
+    }
+
+    async function requestClan() {
+      const name = clanNameInput.value.trim();
+      if (!name) return alert("클랜명을 입력하세요.");
+
+      const clanSnapshot = await get(ref(database, `clans/${name}`));
+      if (clanSnapshot.exists()) return alert("이미 존재하는 클랜입니다.");
+
+      const newClan = {
+        leader: currentUser,
+        members: [currentUser],
+        pending: []
+      };
+      await set(ref(database, `clans/${name}`), newClan);
+      await update(ref(database, `users/${currentUser}`), { clan: name });
+      alert("클랜 생성 완료");
+      renderRequests();
+    }
+
+    async function approve(clanName, member) {
+      const clanRef = ref(database, `clans/${clanName}`);
+      const snapshot = await get(clanRef);
+      const data = snapshot.val();
+      const newPending = (data.pending || []).filter(m => m !== member);
+      const newMembers = [...(data.members || []), member];
+
+      await update(clanRef, {
+        pending: newPending,
+        members: newMembers
+      });
+      await update(ref(database, `users/${member}`), { clan: clanName });
+      alert("승인되었습니다");
+      renderRequests();
+    }
+
+    async function reject(clanName, member) {
+      const clanRef = ref(database, `clans/${clanName}`);
+      const snapshot = await get(clanRef);
+      const data = snapshot.val();
+      const newPending = (data.pending || []).filter(m => m !== member);
+
+      await update(clanRef, { pending: newPending });
+      alert("거절되었습니다");
+      renderRequests();
+    }
+
+    window.requestClan = requestClan;
+    window.approve = approve;
+    window.reject = reject;
+    renderRequests();
+  </script>
 </head>
 <body>
   <div class="logo">
     <img src="horst-logo.png" alt="HORST 로고">
   </div>
-
   <div class="box">
     <h1>🛡 클랜 생성 신청</h1>
     <p>클랜명을 입력해 신청하세요. 클랜장은 첫 번째 신청자입니다.</p>
@@ -110,135 +191,9 @@
     <br>
     <button onclick="requestClan()">신청하기</button>
   </div>
-
   <div class="box">
-    <h2>내가 속한 클랜</h2>
+    <h2>내 클랜 정보</h2>
     <ul id="pendingList"></ul>
   </div>
-
-  <script>
-    const currentUser = localStorage.getItem("currentUser");
-    const users = JSON.parse(localStorage.getItem("users") || "{}");
-    const clanRequests = JSON.parse(localStorage.getItem("clanRequests") || "{}");
-
-    const clanNameInput = document.getElementById("clanNameInput");
-    const pendingList = document.getElementById("pendingList");
-
-    function renderRequests() {
-      pendingList.innerHTML = "";
-      Object.entries(clanRequests).forEach(([clanName, data]) => {
-        const isMyClan = data.applicants.includes(currentUser);
-        const isLeader = data.leader === currentUser;
-
-        if (isMyClan) {
-          const li = document.createElement("li");
-
-          let buttons = "";
-          if (isLeader) {
-            data.pendingMembers.forEach(member => {
-              buttons += `<div>${member} 
-                <button onclick="approveMember('${clanName}', '${member}')">✔</button> 
-                <button onclick="rejectMember('${clanName}', '${member}')">✖</button></div>`;
-            });
-
-            data.members.forEach(member => {
-              if (member !== currentUser) {
-                buttons += `<div>${member} <button onclick="kickMember('${clanName}', '${member}')">추방</button></div>`;
-              }
-            });
-
-            buttons += `
-              <div><button onclick="transferLeadership('${clanName}')">클랜장 양도</button></div>
-              <div><button onclick="disbandClan('${clanName}')">클랜 해체</button></div>`;
-          }
-
-          li.innerHTML = `
-            <strong>${clanName}</strong><br>
-            클랜장: ${data.leader}<br>
-            구성원: ${data.members.join(", ")}<br>
-            ${buttons}`;
-          pendingList.appendChild(li);
-        }
-      });
-    }
-
-    function requestClan() {
-      const name = clanNameInput.value.trim();
-      if (!name) return alert("클랜명을 입력하세요.");
-      if (clanRequests[name]) return alert("이미 존재하는 클랜입니다.");
-
-      clanRequests[name] = {
-        leader: currentUser,
-        members: [currentUser],
-        applicants: [currentUser],
-        pendingMembers: []
-      };
-
-      users[currentUser].clan = name;
-      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
-      localStorage.setItem("users", JSON.stringify(users));
-      renderRequests();
-    }
-
-    function applyToClan(clanName) {
-      const data = clanRequests[clanName];
-      if (!data.pendingMembers.includes(currentUser)) {
-        data.pendingMembers.push(currentUser);
-        localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
-        alert("클랜 가입 신청이 완료되었습니다.");
-        renderRequests();
-      }
-    }
-
-    function approveMember(clanName, member) {
-      const data = clanRequests[clanName];
-      data.pendingMembers = data.pendingMembers.filter(m => m !== member);
-      data.members.push(member);
-      users[member].clan = clanName;
-      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
-      localStorage.setItem("users", JSON.stringify(users));
-      renderRequests();
-    }
-
-    function rejectMember(clanName, member) {
-      const data = clanRequests[clanName];
-      data.pendingMembers = data.pendingMembers.filter(m => m !== member);
-      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
-      renderRequests();
-    }
-
-    function kickMember(clanName, member) {
-      const data = clanRequests[clanName];
-      data.members = data.members.filter(m => m !== member);
-      delete users[member].clan;
-      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
-      localStorage.setItem("users", JSON.stringify(users));
-      renderRequests();
-    }
-
-    function disbandClan(clanName) {
-      if (!confirm("정말 이 클랜을 해체하시겠습니까?")) return;
-      const data = clanRequests[clanName];
-      [...data.members, ...data.pendingMembers].forEach(member => {
-        if (users[member]) delete users[member].clan;
-      });
-      delete clanRequests[clanName];
-      localStorage.setItem("users", JSON.stringify(users));
-      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
-      renderRequests();
-    }
-
-    function transferLeadership(clanName) {
-      const data = clanRequests[clanName];
-      const newLeader = prompt("양도할 클랜장의 닉네임을 입력하세요:");
-      if (!data.members.includes(newLeader)) return alert("해당 사용자는 클랜 구성원이 아닙니다.");
-      data.leader = newLeader;
-      localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
-      alert("클랜장이 변경되었습니다.");
-      renderRequests();
-    }
-
-    renderRequests();
-  </script>
 </body>
 </html>

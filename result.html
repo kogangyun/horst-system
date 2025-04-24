@@ -23,44 +23,50 @@
     }
 
     .container {
-      max-width: 650px;
-      margin: 100px auto;
-      padding: 40px 30px;
+      max-width: 1000px;
+      margin: 80px auto;
+      padding: 30px;
       background: rgba(17, 17, 17, 0.95);
       border: 2px solid #7b2ff7;
       border-radius: 15px;
       box-shadow: 0 0 25px rgba(123, 47, 247, 0.4);
     }
 
-    h1 {
-      color: #00f2ff;
-      text-shadow: 0 0 8px #00f2ff;
-      font-size: 1.8rem;
-      margin-bottom: 10px;
+    .match-box {
+      display: flex;
+      justify-content: space-around;
+      align-items: flex-start;
     }
 
-    p {
-      color: #aaa;
-      font-size: 1rem;
-      margin-bottom: 20px;
+    .team {
+      width: 40%;
     }
 
-    select, button {
-      padding: 12px 20px;
-      font-size: 1rem;
-      margin: 10px 5px;
-      border-radius: 8px;
-      border: none;
-      font-family: 'Orbitron', sans-serif;
+    .player {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 10px;
+      margin: 6px 0;
+      background: #1b1b1b;
+      border: 1px solid #00f2ff;
+      border-radius: 6px;
     }
 
     select {
-      background: #000;
-      color: #00f2ff;
-      border: 1px solid #7b2ff7;
+      padding: 5px;
+    }
+
+    .map-center {
+      font-size: 22px;
+      color: gold;
+      margin: 20px 0;
     }
 
     button {
+      margin-top: 30px;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
       background: linear-gradient(90deg, #00f2ff, #7b2ff7);
       color: black;
       font-weight: bold;
@@ -68,28 +74,35 @@
       box-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
     }
 
-    button:hover {
-      opacity: 0.95;
-      transform: scale(1.05);
-    }
-
     #manualDisputeBtn {
       background-color: #ff2f5e;
       color: white;
+      margin-top: 10px;
     }
 
     #manualDisputeNotice {
-      margin-top: 15px;
+      margin-top: 10px;
       color: #ff7070;
-      font-weight: bold;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>HORST 경기 결과 입력</h1>
-    <p>⚔ 모든 참가자가 결과를 입력해야 확정됩니다.</p>
-    <div id="resultForm"></div>
+    <h1>HORST 매칭 결과</h1>
+    <div class="match-box">
+      <div class="team" id="teamA">
+        <h3>팀 A</h3>
+      </div>
+      <div>
+        <div class="map-center" id="mapName">맵 이름</div>
+      </div>
+      <div class="team" id="teamB">
+        <h3>팀 B</h3>
+      </div>
+    </div>
+    <button id="submitResult">결과 제출</button>
+    <button id="manualDisputeBtn">⚠ 수동 이의제기</button>
+    <div id="manualDisputeNotice" style="display:none;">📎 이의제기 접수 완료</div>
   </div>
 
   <script src="result.js"></script>

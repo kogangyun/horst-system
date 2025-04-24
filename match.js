@@ -1,3 +1,5 @@
+// match.js - 실시간 매칭 담당 스크립트 (Firebase 없이 localStorage 기반)
+
 const currentUser = localStorage.getItem("currentUser");
 const userScores = JSON.parse(localStorage.getItem("userScores") || "{}");
 let queue = JSON.parse(localStorage.getItem("matchQueue") || "[]");
@@ -5,7 +7,7 @@ let timerInterval = null;
 let elapsedSeconds = 0;
 
 const maps = [
-  "영원의 전쟁터", "죽음의 광산", "용의 둥지", "핵탄두 격전지", "하늘 사원",
+  "영원의 전쟁터", "용의 둥지", "하늘 사원",
   "브락시스 항전", "파멸의 탑", "볼스카야 공장", "저주의 골짜기", "거미 여왕의 무덤"
 ];
 
@@ -37,20 +39,20 @@ function updateStatus() {
       teamA: teams.teamA.map(p => p.name),
       teamB: teams.teamB.map(p => p.name),
       map,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      results: {}, // 승/패 기록용
     };
-
-    localStorage.setItem("currentMatch", JSON.stringify(matchData));
 
     queue = queue.slice(10);
     localStorage.setItem("matchQueue", JSON.stringify(queue));
+    localStorage.setItem("currentMatch", JSON.stringify(matchData));
 
     saveMatch(matchData);
     showMatchResult(matchData);
 
     setTimeout(() => {
       window.location.href = "result.html";
-    }, 600000); // 10분 = 600000ms
+    }, 3000); // 3초 후 자동 이동 (테스트용)
   } else {
     if (!timerInterval) startTimer();
   }
@@ -59,7 +61,6 @@ function updateStatus() {
 function startTimer() {
   elapsedSeconds = 0;
   document.getElementById("timer").innerText = `경과 시간: 0초`;
-
   timerInterval = setInterval(() => {
     elapsedSeconds++;
     document.getElementById("timer").innerText = `경과 시간: ${elapsedSeconds}초`;
@@ -86,18 +87,7 @@ function createBalancedTeams(players) {
     }
   }
 
-  return {
-    teamA: markLeader(teamA),
-    teamB: markLeader(teamB)
-  };
-}
-
-function markLeader(team) {
-  const maxScore = Math.max(...team.map(p => p.score));
-  return team.map(p => ({
-    ...p,
-    name: p.score === maxScore ? `👑${p.name} (${p.score})` : `${p.name} (${p.score})`
-  }));
+  return { teamA, teamB };
 }
 
 function showMatchResult(match) {
@@ -108,11 +98,17 @@ function showMatchResult(match) {
     <p><strong>팀 A:</strong> ${match.teamA.join(", ")}</p>
     <p><strong>팀 B:</strong> ${match.teamB.join(", ")}</p>
   `;
-  document.getElementById("statusText").innerText = "10분 후 결과 입력 페이지로 이동합니다...";
+  document.getElementById("statusText").innerText = "3초 후 결과 입력 화면으로 이동합니다...";
 }
 
 function saveMatch(matchData) {
   const matchHistory = JSON.parse(localStorage.getItem("matchHistory") || "[]");
   matchHistory.push(matchData);
   localStorage.setItem("matchHistory", JSON.stringify(matchHistory));
+}
+
+// 초기 점수 설정 (1000점)
+if (!(currentUser in userScores)) {
+  userScores[currentUser] = 1000;
+  localStorage.setItem("userScores", JSON.stringify(userScores));
 }
