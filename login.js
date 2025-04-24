@@ -1,5 +1,5 @@
 // login.js
-import { getDatabase, ref, get, child } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+import { getDatabase, ref, get, child, set } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 import { db } from "./firebase.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -8,7 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 async function login() {
-  const id = document.getElementById("username").value.trim();
+  const id = document.getElementById("username").value.trim().toLowerCase();
   const pw = document.getElementById("password").value;
   const errorBox = document.getElementById("error");
 
@@ -17,49 +17,56 @@ async function login() {
     return;
   }
 
-  const snapshot = await get(child(ref(db), `users/${id}`));
+  try {
+    const snapshot = await get(child(ref(db), `users/${id}`));
 
-  if (!snapshot.exists()) {
-    errorBox.innerText = "존재하지 않는 아이디입니다.";
-    return;
-  }
+    if (!snapshot.exists()) {
+      errorBox.innerText = "존재하지 않는 아이디입니다.";
+      return;
+    }
 
-  const user = snapshot.val();
+    const user = snapshot.val();
 
-  if (user.blocked) {
-    errorBox.innerText = "차단된 유저입니다. 관리자에게 문의하세요.";
-    return;
-  }
+    if (user.blocked) {
+      errorBox.innerText = "차단된 유저입니다. 관리자에게 문의하세요.";
+      return;
+    }
 
-  if (user.password !== pw) {
-    errorBox.innerText = "비밀번호가 일치하지 않습니다.";
-    return;
-  }
+    if (user.password !== pw) {
+      errorBox.innerText = "비밀번호가 일치하지 않습니다.";
+      return;
+    }
 
-  // 관리자 자동 승인 처리
-  if (id === "admin") {
-    user.status = "approved";
-    user.role = "admin";
-  }
+    // ✅ 관리자 자동 승인 + 역할 설정 (DB에 저장까지)
+    if (id === "admin") {
+      user.status = "approved";
+      user.role = "admin";
+      await set(ref(db, `users/${id}`), user);
+    }
 
-  if (user.status !== "approved") {
-    errorBox.innerText = "가입 승인 대기 중입니다.";
-    alert("📢 가입 신청이 완료되었습니다. 승인을 위해 5,000원을 입금해 주세요.");
-    return;
-  }
+    if (user.status !== "approved") {
+      errorBox.innerText = "가입 승인 대기 중입니다.";
+      alert("📢 가입 신청이 완료되었습니다. 승인을 위해 5,000원을 입금해 주세요.");
+      return;
+    }
 
-  const joinedAt = new Date(user.joinedAt || new Date());
-  const today = new Date();
-  const diff = (today - joinedAt) / (1000 * 60 * 60 * 24);
-  if (diff > 30 && id !== "admin") {
-    errorBox.innerText = "⛔ 이용 기간이 만료되었습니다. 오픈카톡으로 문의해 연장해 주세요.";
-    return;
-  }
+    // ✅ 유료 기능: 가입 후 30일 초과 로그인 차단
+    const joinedAt = new Date(user.joinedAt || new Date());
+    const today = new Date();
+    const diff = (today - joinedAt) / (1000 * 60 * 60 * 24);
+    if (diff > 30 && id !== "admin") {
+      errorBox.innerText = "⛔ 이용 기간이 만료되었습니다. 오픈카톡으로 문의해 연장해 주세요.";
+      return;
+    }
 
-  localStorage.setItem("currentUser", id);
-  if (user.role === "admin") {
-    location.href = "admin.html";
-  } else {
-    location.href = "main.html";
+    localStorage.setItem("currentUser", id);
+    if (user.role === "admin") {
+      location.href = "admin.html";
+    } else {
+      location.href = "main.html";
+    }
+  } catch (error) {
+    console.error("로그인 오류:", error);
+    errorBox.innerText = "⚠️ 로그인 중 오류가 발생했습니다.";
   }
 }
