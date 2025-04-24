@@ -1,6 +1,6 @@
 // signup.js - Firebase 연동 기반 회원가입 처리
 
-import { getDatabase, ref, get, set, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { database } from "./firebase.js";
 
 function signup() {
@@ -8,23 +8,27 @@ function signup() {
   const pw = document.getElementById("password").value;
   const confirm = document.getElementById("confirm").value;
 
+  // 아이디 유효성 검사
   const idRegex = /^[a-zA-Z0-9가-힣]{2,12}$/;
   if (!idRegex.test(id)) {
     alert("아이디는 영어, 숫자, 한글만 포함 가능하고 2~12자 사이여야 합니다.");
     return;
   }
 
+  // 특수문자 제한 (보안)
   if (/[<>]/.test(id)) {
     alert("아이디에 사용할 수 없는 문자가 포함되어 있습니다.");
     return;
   }
 
+  // 비밀번호 유효성 검사
   const pwValid = pw.length >= 6 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw);
   if (!pwValid) {
     alert("비밀번호는 6자 이상이어야 하며, 영문과 숫자를 포함해야 합니다.");
     return;
   }
 
+  // 비밀번호 확인
   if (pw !== confirm) {
     alert("비밀번호가 일치하지 않습니다.");
     return;

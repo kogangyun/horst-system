@@ -80,9 +80,10 @@
       box-shadow: 0 0 10px #ffaa00aa;
     }
   </style>
+  <!-- Firebase -->
   <script type="module" src="firebase.js"></script>
   <script type="module">
-    import { getDatabase, ref, onValue, set, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getDatabase, ref, onValue, update, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const db = getDatabase();
     const userRef = ref(db, 'users');
@@ -103,7 +104,7 @@
           const approveBtn = document.createElement("button");
           approveBtn.innerText = "승인";
           approveBtn.onclick = () => {
-            set(ref(db, `users/${id}/status`), "approved");
+            update(ref(db, `users/${id}`), { status: "approved" });
             alert(`${id}님이 승인되었습니다.`);
           };
 
@@ -125,6 +126,7 @@
     function goBack() {
       location.href = "admin.html";
     }
+
     window.goBack = goBack;
   </script>
 </head>
