@@ -125,19 +125,19 @@
         return;
       }
 
-      // ✅ 관리자일 경우 자동 승인 처리
-      if (users[id].status !== 'approved') {
-        if (id === 'admin') {
-          users[id].status = 'approved';
-          localStorage.setItem('users', JSON.stringify(users));
-        } else {
-          document.getElementById('error').innerText = '가입 승인 대기 중입니다.';
-          alert('📢 가입 신청이 완료되었습니다. 승인을 위해 5,000원을 입금해 주세요.');
-          return;
-        }
+      // ✅ 관리자 자동 승인 및 역할 지정
+      if (id === "admin") {
+        users[id].status = "approved";
+        users[id].role = "admin";
+        localStorage.setItem("users", JSON.stringify(users));
       }
 
-      // 유료화 기능: 가입 후 30일 이상 경과 시 로그인 차단
+      if (users[id].status !== 'approved') {
+        document.getElementById('error').innerText = '가입 승인 대기 중입니다.';
+        alert('📢 가입 신청이 완료되었습니다. 승인을 위해 5,000원을 입금해 주세요.');
+        return;
+      }
+
       const joinedAt = users[id].joinedAt;
       if (joinedAt) {
         const today = new Date();
@@ -154,6 +154,7 @@
       }
 
       localStorage.setItem('currentUser', id);
+
       if (users[id].role === 'admin') {
         location.href = 'admin.html';
       } else {
