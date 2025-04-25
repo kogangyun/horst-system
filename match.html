@@ -81,7 +81,7 @@
   </div>
 
   <div class="box" id="welcomeBox">
-    <h2>HORST에 오신 것을 환영합니다</h2>
+    <!-- 로그인 스크립트에서 채워집니다 -->
   </div>
 
   <div class="box">
@@ -113,5 +113,22 @@
 
   <!-- 통합된 매칭 시스템 스크립트 -->
   <script type="module" src="match.js"></script>
+  <script type="module">
+    // 로그인/로그아웃 처리
+    const currentUser = sessionStorage.getItem("currentUser");
+    if (!currentUser) {
+      alert("로그인이 필요합니다.");
+      location.href = "index.html";
+    }
+    function logout() {
+      sessionStorage.removeItem("currentUser");
+      location.href = "index.html";
+    }
+    window.logout = logout;
+
+    // 환영 메시지 동적 표시
+    const welcomeBox = document.getElementById("welcomeBox");
+    welcomeBox.innerHTML = `<h2>${currentUser}님, HORST에 오신 것을 환영합니다</h2>`;
+  </script>
 </body>
 </html>

@@ -54,12 +54,7 @@
       transition: 0.2s;
     }
     button:hover { transform: scale(1.05); opacity: 0.95; }
-    ul {
-      list-style: none;
-      padding: 0;
-      text-align: left;
-      margin-top: 10px;
-    }
+    ul { list-style: none; padding: 0; text-align: left; margin-top: 10px; }
     ul li {
       background: #1e1e1e;
       padding: 10px;
@@ -126,13 +121,13 @@
   <!-- 매칭 완료 사운드 -->
   <audio id="matchSound" src="videoplayback (3).m4a" preload="auto"></audio>
 
-  <!-- 매칭 & 토너먼트 스크립트 -->
+  <!-- 매칭 & 토너먼트 로직 -->
   <script type="module" src="main.js"></script>
   <script type="module">
     import { db } from './firebase.js';
-    import { ref, get, set, remove, onValue } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+    import { ref, get, child } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js';
 
-    // 로그인/로그아웃
+    // 로그인/로그아웃 처리
     const currentUser = sessionStorage.getItem('currentUser');
     if (!currentUser) {
       alert('로그인이 필요합니다.');
@@ -144,70 +139,52 @@
     }
     window.logout = logout;
 
-    // 자동 로그아웃: 페이지 닫기/새로고침 시 자동 로그아웃
-    window.addEventListener('beforeunload', () => {
-      sessionStorage.removeItem('currentUser');
-    });
-
-    // 토너먼트 UI 요소
-    const joinBtn = document.getElementById('joinTournamentBtn');
-    const cancelBtn = document.getElementById('cancelTournamentBtn');
-    const infoBox = document.getElementById('tournamentInfo');
-    const timeBox = document.getElementById('tournamentTime');
-    const mapBox = document.getElementById('mapDisplay');
-    const queueBox = document.getElementById('queueStatus');
-    const listBox = document.getElementById('participantList');
-
-    // 남은 시간 표시
-    function updateTournamentTime() {
-      const now = new Date();
-      const nextFriday = new Date();
-      nextFriday.setDate(now.getDate() + ((12 - now.getDay()) % 7));
-      nextFriday.setHours(19,0,0,0);
-      const diff = nextFriday - now;
-      if (diff <= 0) {
-        timeBox.innerText = '토너먼트 시작!';
-      } else {
-        const d = Math.floor(diff/86400000);
-        const h = Math.floor((diff%86400000)/3600000);
-        const m = Math.floor((diff%3600000)/60000);
-        const s = Math.floor((diff%60000)/1000);
-        timeBox.innerText = `시작까지: ${d}일 ${h}시간 ${m}분 ${s}초`;
+    // 환영 메시지 및 클랜명 표시
+    const welcomeBox = document.getElementById('welcomeBox');
+    (async () => {
+      try {
+        const snap = await get(child(ref(db), `users/${currentUser}`));
+        if (snap.exists()) {
+          const user = snap.val();
+          const clan = user.clanName || '미소속';
+          welcomeBox.innerHTML =
+            `<h2>${currentUser}님 (클랜: ${clan})님, HORST에 오신 것을 환영합니다</h2>`;
+        } else {
+          welcomeBox.innerHTML =
+            `<h2>${currentUser}님, HORST에 오신 것을 환영합니다</h2>`;
+        }
+      } catch (err) {
+        console.error(err);
+        welcomeBox.innerHTML = `<h2>${currentUser}님, HORST에 오신 것을 환영합니다</h2>`;
       }
-    }
-    updateTournamentTime();
-    setInterval(updateTournamentTime, 1000);
+    })();
 
-    // 실시간 참가자 & 맵 & 버튼 상태
-    onValue(ref(db, 'tournament'), snap => {
-      const data = snap.val() || {};
-      // 참가자
-      const parts = data.participants || {};
-      const cnt = Object.keys(parts).length;
-      infoBox.innerText = `현재 참가자: ${cnt}/20명`;
-      listBox.innerHTML = '<ul>' + Object.values(parts).map(p=>`<li>${p.name}</li>`).join('') + '</ul>';
-      // 맵
-      mapBox.innerText = `선택된 맵: ${data.map || '맵 정보 없음'}`;
-      // 큐 상태
-      queueBox.innerText = `현재 대기 중: ${cnt}/20`;
-      // 버튼 활성화/비활성화
-      joinBtn.disabled   = !!parts[currentUser];
-      cancelBtn.disabled = !parts[currentUser];
-    });
-
-    // 참가/취소 처리
-    joinBtn.addEventListener('click', async () => {
-      const parts = (await get(ref(db, 'tournament/participants'))).val() || {};
-      if (parts[currentUser]) return;
-      await set(ref(db, `tournament/participants/${currentUser}`), { name: currentUser, joinedAt: Date.now() });
-    });
-    cancelBtn.addEventListener('click', async () => {
-      const parts = (await get(ref(db, 'tournament/participants'))).val() || {};
-      if (!parts[currentUser]) return;
-      await remove(ref(db, `tournament/participants/${currentUser}`));
-    });
-
-    // (실시간 매칭 로직은 main.js 에서 처리)
+    // 이용 기간 표시 및 만료 체크
+    const billingInfo = document.getElementById('billingInfo');
+    (async () => {
+      try {
+        const snap = await get(child(ref(db), `users/${currentUser}`));
+        if (snap.exists()) {
+          const user = snap.val();
+          const joinedAt = new Date(user.joinedAt);
+          const today = new Date();
+          const daysPassed = Math.floor((today - joinedAt) / (1000 * 60 * 60 * 24));
+          const daysLeft = 30 - daysPassed;
+          if (daysLeft <= 0 && currentUser !== 'admin') {
+            alert('⛔ 이용 기간이 만료되었습니다. 갱신해주세요.');
+            sessionStorage.removeItem('currentUser');
+            location.href = 'index.html';
+          } else {
+            billingInfo.innerText = `남은 이용 기간: ${daysLeft}일`;
+          }
+        } else {
+          billingInfo.innerText = '이용자 정보를 불러올 수 없습니다.';
+        }
+      } catch (err) {
+        console.error(err);
+        billingInfo.innerText = '이용 기간 로딩 중 오류 발생';
+      }
+    })();
   </script>
 </body>
 </html>

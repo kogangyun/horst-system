@@ -49,7 +49,12 @@ async function login() {
     // 🕒 승인 여부 확인
     if (user.status !== "approved") {
       errorBox.innerText = "가입 승인 대기 중입니다.";
-      alert("📢 가입 신청이 완료되었습니다.\n승인을 위해 5,000원을 입금해 주세요.\n첫달은 무료입니다. 궁금한 사항은 오픈카톡으로 문의 부탁드립니다:\nhttps://open.kakao.com/o/sn8r4Psh");
+      alert(
+        "📢 가입 신청이 완료되었습니다.\n" +
+        "승인을 위해 5,000원을 입금해 주세요.\n" +
+        "첫달은 무료입니다. 궁금한 사항은 오픈카톡으로 문의 부탁드립니다:\n" +
+        "https://open.kakao.com/o/sn8r4Psh"
+      );
       return;
     }
 
@@ -69,7 +74,7 @@ async function login() {
       return;
     }
 
-    // ✅ 로그인 완료
+    // ✅ 로그인 완료 (sessionStorage로 변경)
     sessionStorage.setItem("currentUser", id);
     alert("🎉 로그인 성공!");
     location.href = user.role === "admin" ? "admin.html" : "main.html";

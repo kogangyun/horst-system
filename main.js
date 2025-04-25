@@ -1,10 +1,11 @@
+// main.js
 import { db } from "./firebase.js";
 import {
   ref, get, set, remove, onValue
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-// 로그인 체크
-const currentUser = localStorage.getItem("currentUser");
+// 로그인 체크 (localStorage → sessionStorage)
+const currentUser = sessionStorage.getItem("currentUser");
 if (!currentUser) {
   alert("로그인이 필요합니다.");
   location.href = "index.html";
@@ -12,8 +13,6 @@ if (!currentUser) {
 
 // — 토너먼트 설정 —
 const maxParticipants = 20;
-let tournamentStarted = false;
-
 // 화면 요소
 const tournamentTime   = document.getElementById("tournamentTime");
 const mapDisplay       = document.getElementById("mapDisplay");
@@ -48,51 +47,46 @@ function updateTournamentTimer() {
   tournamentTime.innerText =
     `다음 토너먼트까지: ${days}일 ${hrs}시간 ${min}분 ${sec}초`;
 }
-setInterval(updateTournamentTimer, 1000);
 updateTournamentTimer();
+setInterval(updateTournamentTimer, 1000);
 
-// 토너먼트 상태 구독
+// 토너먼트 상태 및 참가자 구독
 onValue(ref(db, "tournament"), snap => {
   const data = snap.val() || {};
-  tournamentStarted = data.status === "ongoing";
-  mapDisplay.innerHTML = `<p><strong>맵:</strong> ${data.map||"정보 없음"}</p>`;
-  // 버튼 활성/비활성
-  joinTournBtn.disabled   = tournamentStarted;
-  cancelTournBtn.disabled = !tournamentStarted;
-});
+  const parts = data.participants || {};
+  const cnt = Object.keys(parts).length;
 
-// 참가자 목록 구독
-onValue(ref(db, "tournament/participants"), snap => {
-  const pts = snap.val() || {};
-  const cnt = Object.keys(pts).length;
+  // UI 업데이트
+  mapDisplay.innerHTML = `<p><strong>맵:</strong> ${data.map||"정보 없음"}</p>`;
   queueStatus.innerText = `현재 참가자: ${cnt}/${maxParticipants}`;
   participantList.innerHTML =
-    "<ul>" + Object.values(pts)
-                   .map(u=>`<li>${u.name}</li>`)
-                   .join("") +
-    "</ul>";
+    '<ul>' + Object.values(parts).map(p=>`<li>${p.name}</li>`).join('') + '</ul>';
+
+  // 버튼 제어: 신청 여부 기준
+  const joined = !!parts[currentUser];
+  joinTournBtn.disabled   = joined;
+  cancelTournBtn.disabled = !joined;
 });
 
 // 참가 신청
-joinTournBtn.onclick = async () => {
-  const pts = (await get(ref(db, "tournament/participants"))).val()||{};
+joinTournBtn.addEventListener('click', async () => {
+  const snap = await get(ref(db, "tournament/participants"));
+  const pts = snap.val() || {};
+  const cnt = Object.keys(pts).length;
   if (pts[currentUser]) return alert("이미 신청하셨습니다.");
-  if (Object.keys(pts).length >= maxParticipants)
-    return alert("정원 초과");
-  await set(ref(db, `tournament/participants/${currentUser}`), {
-    name: currentUser,
-    joinedAt: Date.now()
-  });
+  if (cnt >= maxParticipants)  return alert("정원 초과");
+  await set(ref(db, `tournament/participants/${currentUser}`), { name: currentUser, joinedAt: Date.now() });
   alert("참가 신청 완료!");
-};
+});
 
 // 참가 취소
-cancelTournBtn.onclick = async () => {
-  const pts = (await get(ref(db, "tournament/participants"))).val()||{};
+cancelTournBtn.addEventListener('click', async () => {
+  const snap = await get(ref(db, "tournament/participants"));
+  const pts = snap.val() || {};
   if (!pts[currentUser]) return alert("신청 내역이 없습니다.");
   await remove(ref(db, `tournament/participants/${currentUser}`));
   alert("참가 취소 완료!");
-};
+});
 
 // — 실시간 매칭 설정 —
 const statusText = document.getElementById("statusText");
@@ -112,7 +106,7 @@ let elapsed = 0;
 
 // 대기열 구독
 onValue(ref(db, "matchQueue"), snap => {
-  queue = snap.val()||[];
+  queue = snap.val() || [];
   updateMatchStatus();
   if (queue.includes(currentUser)) startMatchTimer();
 });
