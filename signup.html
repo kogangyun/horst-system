@@ -95,20 +95,30 @@
     <input type="text" id="username" placeholder="아이디" />
     <input type="password" id="password" placeholder="비밀번호" />
     <input type="password" id="confirm" placeholder="비밀번호 확인" />
-    <button onclick="signup()">가입하기</button>
+    <button id="signupBtn">가입하기</button>
     <p><a href="index.html">로그인으로 돌아가기</a></p>
   </div>
 
-  <script>
-    const currentUser = localStorage.getItem("currentUser");
-    if (currentUser) {
-      alert("이미 로그인된 상태입니다.");
-      location.href = "main.html";
-    }
-  </script>
+  <!-- ✅ Firebase 및 signup 기능 연결 -->
+  <script type="module">
+    import { signup } from "./signup.js";
+    import { db } from "./firebase.js";
+    import { ref, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-  <!-- ✅ Firebase 및 signup.js 모듈 불러오기 -->
-  <script type="module" src="firebase.js"></script>
-  <script type="module" src="signup.js"></script>
+    (async () => {
+      const currentUser = localStorage.getItem("currentUser");
+      if (currentUser) {
+        const snap = await get(ref(db, `users/${currentUser}`));
+        if (snap.exists()) {
+          const role = snap.val().role;
+          location.href = role === "admin" ? "admin.html" : "main.html";
+        } else {
+          localStorage.removeItem("currentUser");
+        }
+      }
+
+      document.getElementById("signupBtn").addEventListener("click", signup);
+    })();
+  </script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 // signup.js - Firebase 연동 기반 회원가입 처리
 
-import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-import { database } from "./firebase.js";
+import { ref, get, set } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { db } from "./firebase.js"; // getDatabase() 대신 firebase.js에서 export한 db 사용
 
 function signup() {
   const id = document.getElementById("username").value.trim().toLowerCase();
@@ -15,7 +15,6 @@ function signup() {
     return;
   }
 
-  // 특수문자 제한 (보안)
   if (/[<>]/.test(id)) {
     alert("아이디에 사용할 수 없는 문자가 포함되어 있습니다.");
     return;
@@ -34,13 +33,12 @@ function signup() {
     return;
   }
 
-  const db = getDatabase();
   const userRef = ref(db, `users/${id}`);
 
   get(userRef).then((snapshot) => {
     if (snapshot.exists()) {
       const userData = snapshot.val();
-      if (userData.blocked) {
+      if (userData.isBlocked) {
         alert("이 아이디는 차단되어 있어 가입할 수 없습니다.");
       } else {
         alert("이미 존재하는 아이디입니다.");
@@ -52,19 +50,20 @@ function signup() {
 
       const newUser = {
         password: pw,
-        status,             // "pending" 또는 "approved"
-        role,               // "user" 또는 "admin"
-        blocked: false,
-        joinedAt            // 가입일 (30일 유효기간 체크용)
+        status,              // 승인 대기 상태 또는 바로 승인
+        role,                // user 또는 admin
+        isBlocked: false,    // 차단 여부 (일관성 있게)
+        joinedAt             // 가입 시간 저장
       };
 
       set(userRef, newUser)
         .then(() => {
-          localStorage.setItem("currentUser", id);
           if (role === "admin") {
+            localStorage.setItem("currentUser", id);
+            alert("🎉 관리자 계정으로 가입 및 로그인 되었습니다.");
             location.href = "admin.html";
           } else {
-            alert("가입이 완료되었습니다! 관리자의 승인을 기다려주세요.");
+            alert("✅ 가입이 완료되었습니다! 관리자의 승인을 기다려주세요.");
             location.href = "index.html";
           }
         })
