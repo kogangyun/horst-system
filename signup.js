@@ -52,7 +52,7 @@ function signup() {
         password: pw,
         status,              // 승인 대기 상태 또는 바로 승인
         role,                // user 또는 admin
-        isBlocked: false,    // 차단 여부 (일관성 있게)
+        isBlocked: false,    // 차단 여부
         joinedAt             // 가입 시간 저장
       };
 
@@ -75,4 +75,6 @@ function signup() {
   });
 }
 
+// 전역에서도 접근 가능하게 하고 모듈에서도 쓸 수 있게 export
 window.signup = signup;
+export { signup };
