@@ -4,6 +4,7 @@ import {
   ref,
   get,
   set,
+  update,
   onValue,
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
@@ -22,8 +23,11 @@ const userScores = JSON.parse(localStorage.getItem("userScores") || "{}");
 const userData = JSON.parse(localStorage.getItem("users") || "{}");
 
 const matchRef = ref(db, `matchResults/${matchId}`);
-const results = {};
 
+// ✅ 입력 여부 저장용
+const resultInputs = {};
+
+// 🧩 각 플레이어 승/패 선택 UI 생성
 function createPlayerRow(name) {
   const wrapper = document.createElement("div");
   wrapper.className = "player";
@@ -40,9 +44,23 @@ function createPlayerRow(name) {
     <option value="win">승</option>
     <option value="lose">패</option>
   `;
+
   select.disabled = name !== currentUser;
+
+  // ✅ 이미 입력된 경우: select 값 지정 + 비활성화
+  get(ref(db, `matchResults/${matchId}/${name}`)).then(snap => {
+    if (snap.exists()) {
+      select.value = snap.val();
+      select.disabled = true;
+    }
+  });
+
   select.onchange = () => {
-    set(ref(db, `matchResults/${matchId}/${currentUser}`), select.value);
+    const value = select.value;
+    if (value) {
+      set(ref(db, `matchResults/${matchId}/${currentUser}`), value);
+      select.disabled = true;
+    }
   };
 
   wrapper.appendChild(label);
@@ -50,6 +68,7 @@ function createPlayerRow(name) {
   return wrapper;
 }
 
+// 🧩 결과 입력 UI 렌더링
 function renderMatchUI() {
   const container = document.createElement("div");
   container.style.display = "flex";
@@ -60,15 +79,8 @@ function renderMatchUI() {
   const teamACol = document.createElement("div");
   const teamBCol = document.createElement("div");
 
-  const teamAHeader = document.createElement("h3");
-  teamAHeader.innerText = "Team A";
-  teamAHeader.style.color = "#7b2ff7";
-  teamACol.appendChild(teamAHeader);
-
-  const teamBHeader = document.createElement("h3");
-  teamBHeader.innerText = "Team B";
-  teamBHeader.style.color = "#7b2ff7";
-  teamBCol.appendChild(teamBHeader);
+  teamACol.innerHTML = `<h3 style="color:#7b2ff7;">Team A</h3>`;
+  teamBCol.innerHTML = `<h3 style="color:#7b2ff7;">Team B</h3>`;
 
   matchData.teamA.forEach(name => teamACol.appendChild(createPlayerRow(name)));
   matchData.teamB.forEach(name => teamBCol.appendChild(createPlayerRow(name)));
@@ -111,7 +123,7 @@ function renderMatchUI() {
   resultBox.appendChild(disputeBtn);
 }
 
-// ✅ 결과 상태 체크 (자동 이의제기 또는 자동 처리)
+// ✅ 결과 실시간 감시 + 처리
 onValue(matchRef, (snapshot) => {
   const data = snapshot.val();
   if (!data) return;
@@ -138,7 +150,7 @@ onValue(matchRef, (snapshot) => {
     localStorage.setItem("matchingPaused", "true");
     location.href = "main.html";
   } else {
-    // 점수 반영
+    // ✅ 점수 반영
     const updates = {};
     [...matchData.teamA, ...matchData.teamB].forEach(name => {
       const win = data[name] === "win";
@@ -152,5 +164,5 @@ onValue(matchRef, (snapshot) => {
   }
 });
 
-// 렌더링 시작
+// 🚀 시작!
 renderMatchUI();

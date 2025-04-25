@@ -16,6 +16,8 @@ const matchResultBox = document.getElementById("matchResult");
 const billingInfo = document.getElementById("billingInfo");
 const tournamentInfo = document.getElementById("tournamentInfo");
 
+const matchSound = new Audio("videoplayback (3).m4a");
+
 const noticeList = JSON.parse(localStorage.getItem("notices") || "[]");
 function renderNotices() {
   noticeUl.innerHTML = "";
@@ -82,13 +84,17 @@ if (!(currentUser in userScores)) {
 }
 
 window.joinMatch = async () => {
+  if (localStorage.getItem("currentMatch")) {
+    alert("진행 중인 매치가 있습니다. 결과 입력 후 다시 시도하세요.");
+    return;
+  }
+
   const snap = await get(ref(db, "matchQueue"));
   matchQueue = snap.exists() ? snap.val() : [];
   if (matchQueue.includes(currentUser)) return alert("이미 대기 중입니다.");
   matchQueue.push(currentUser);
   await set(ref(db, "matchQueue"), matchQueue);
   localStorage.setItem("matchQueue", JSON.stringify(matchQueue));
-  updateMatchStatus();
   if (!timerInterval) startTimer();
 };
 
@@ -99,9 +105,13 @@ window.cancelMatch = async () => {
   await set(ref(db, "matchQueue"), currentQueue);
   matchQueue = currentQueue;
   localStorage.setItem("matchQueue", JSON.stringify(currentQueue));
-  updateMatchStatus();
   clearTimer();
 };
+
+onValue(ref(db, "matchQueue"), (snap) => {
+  matchQueue = snap.exists() ? snap.val() : [];
+  updateMatchStatus();
+});
 
 function updateMatchStatus() {
   matchStatus.innerText = `현재 ${matchQueue.length}/10명 대기 중...`;
@@ -128,6 +138,7 @@ function updateMatchStatus() {
     matchQueue = matchQueue.slice(10);
     set(ref(db, "matchQueue"), matchQueue);
     localStorage.setItem("currentMatch", JSON.stringify(matchData));
+    matchSound.play();
 
     matchResultBox.innerHTML = `
       <h3>🎮 매칭 완료!</h3>
@@ -171,128 +182,4 @@ function createBalancedTeams(players) {
     }
   }
   return { teamA, teamB };
-}
-
-// ✅ 추가: 다음 금요일 19시 계산 함수
-function getNextFridayAt7PM() {
-  const now = new Date();
-  const day = now.getDay();
-  const daysUntilFriday = (5 - day + 7) % 7 || 7;
-  const target = new Date(now);
-  target.setDate(now.getDate() + daysUntilFriday);
-  target.setHours(19, 0, 0, 0);
-  return target;
-}
-
-// ✅ 매주 금요일 오후 7시마다 자동 오픈
-(function autoOpenTournament() {
-  const now = new Date();
-  const tournamentRef = ref(db, "tournament");
-  const newStart = getNextFridayAt7PM();
-  const mapList = [
-    "영원의 전쟁터", "용의 둥지", "하늘 사원",
-    "브락시스 항전", "파멸의 탑", "볼스카야 공장",
-    "저주의 골짜기", "거미 여왕의 무덤"
-  ];
-  const randomMap = mapList[Math.floor(Math.random() * mapList.length)];
-
-  get(tournamentRef).then((snap) => {
-    const current = snap.val();
-    if (!current || new Date(current.startTime) < now || current.status === "ended") {
-      set(tournamentRef, {
-        startTime: newStart.toISOString(),
-        status: "open",
-        participants: [],
-        map: randomMap,
-        teams: null,
-        matches: null
-      });
-    }
-  });
-})();
-
-window.registerTournament = async () => {
-  const snap = await get(ref(db, "tournament"));
-  const data = snap.val();
-  if (!data) return;
-  if (!Array.isArray(data.participants)) data.participants = [];
-  if (!data.participants.includes(currentUser)) {
-    data.participants.push(currentUser);
-    await update(ref(db, "tournament"), { participants: data.participants });
-    alert("✅ 토너먼트 참가 신청 완료!");
-  } else {
-    alert("이미 참가 신청하셨습니다.");
-  }
-};
-
-window.unregisterTournament = async () => {
-  const snap = await get(ref(db, "tournament"));
-  const data = snap.val();
-  if (!data) return;
-  data.participants = data.participants.filter((u) => u !== currentUser);
-  await update(ref(db, "tournament"), { participants: data.participants });
-  alert("❌ 참가 신청이 취소되었습니다.");
-};
-
-onValue(ref(db, "tournament"), async (snap) => {
-  const data = snap.val();
-  if (!data) {
-    tournamentInfo.innerHTML = "현재 등록된 토너먼트가 없습니다.";
-    return;
-  }
-
-  const now = new Date();
-  const startTime = new Date(data.startTime);
-  const diffMs = startTime - now;
-  const participants = data.participants || [];
-  const mapName = data.map || "맵 정보 없음";
-
-  const remaining = diffMs > 0
-    ? `${Math.floor(diffMs / (1000 * 60 * 60 * 24))}일 ${Math.floor(diffMs / (1000 * 60 * 60)) % 24}시간 ${(Math.floor(diffMs / (1000 * 60)) % 60)}분 ${(Math.floor(diffMs / 1000) % 60)}초`
-    : "0일 0시간 0분 0초";
-
-  tournamentInfo.innerHTML = `
-    <p>📍 맵: <strong style="color:skyblue;">${mapName}</strong></p>
-    <p>토너먼트 시작까지: <span style="color:lime;">${remaining} 남음</span></p>
-    <p>참가자 수: <span style="color:gold;">${participants.length}/20</span></p>
-    <div id="tournamentButtons"></div>
-  `;
-
-  const buttonDiv = document.getElementById("tournamentButtons");
-  buttonDiv.innerHTML = `
-    <button onclick="registerTournament()">✅ 참가 신청</button>
-    <button onclick="unregisterTournament()">❌ 신청 취소</button>
-  `;
-
-  if (diffMs <= 0 && participants.length === 20 && !data.teams) {
-    autoAssignTeams(participants);
-  }
-});
-
-async function autoAssignTeams(participants) {
-  const scoresSnap = await get(ref(db, "users"));
-  const scores = scoresSnap.val();
-  participants.sort((a, b) => (scores[b]?.points || 0) - (scores[a]?.points || 0));
-
-  const teams = { A: [], B: [], C: [], D: [] };
-  participants.forEach((player, idx) => {
-    const teamKey = ['A', 'B', 'C', 'D'][idx % 4];
-    teams[teamKey].push(player);
-  });
-
-  const tournamentSnap = await get(ref(db, "tournament"));
-  const map = tournamentSnap.val()?.map || "저주의 골짜기";
-
-  await update(ref(db, "tournament"), {
-    teams,
-    status: "ongoing",
-    matches: {
-      semiFinal1: { team1: "A", team2: "B", winner: "" },
-      semiFinal2: { team1: "C", team2: "D", winner: "" },
-      final: { team1: "", team2: "", winner: "" }
-    }
-  });
-
-  localStorage.setItem("tournamentTeams", JSON.stringify(teams));
-  location.href = "tournament.html";
 }
