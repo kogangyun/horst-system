@@ -27,44 +27,47 @@ async function login() {
 
     const user = snapshot.val();
 
+    // 🚫 차단 확인
     if (user.blocked) {
       errorBox.innerText = "차단된 유저입니다. 관리자에게 문의하세요.";
       return;
     }
 
+    // 🔐 비밀번호 확인
     if (user.password !== pw) {
       errorBox.innerText = "비밀번호가 일치하지 않습니다.";
       return;
     }
 
-    // ✅ 관리자 자동 승인 + 역할 설정 (DB에 저장까지)
+    // 👑 관리자 자동 승인 및 역할 부여
     if (id === "admin") {
       user.status = "approved";
       user.role = "admin";
       await set(ref(db, `users/${id}`), user);
     }
 
+    // 🕒 승인 여부 확인
     if (user.status !== "approved") {
       errorBox.innerText = "가입 승인 대기 중입니다.";
       alert("📢 가입 신청이 완료되었습니다. 승인을 위해 5,000원을 입금해 주세요.");
       return;
     }
 
-    // ✅ 유료 기능: 가입 후 30일 초과 로그인 차단
+    // ⏳ 30일 유효기간 체크
     const joinedAt = new Date(user.joinedAt || new Date());
     const today = new Date();
-    const diff = (today - joinedAt) / (1000 * 60 * 60 * 24);
-    if (diff > 30 && id !== "admin") {
+    const daysPassed = (today - joinedAt) / (1000 * 60 * 60 * 24);
+
+    if (daysPassed > 30 && id !== "admin") {
       errorBox.innerText = "⛔ 이용 기간이 만료되었습니다. 오픈카톡으로 문의해 연장해 주세요.";
       return;
     }
 
+    // ✅ 로그인 완료
     localStorage.setItem("currentUser", id);
-    if (user.role === "admin") {
-      location.href = "admin.html";
-    } else {
-      location.href = "main.html";
-    }
+    alert("🎉 로그인 성공!");
+    location.href = user.role === "admin" ? "admin.html" : "main.html";
+
   } catch (error) {
     console.error("로그인 오류:", error);
     errorBox.innerText = "⚠️ 로그인 중 오류가 발생했습니다.";

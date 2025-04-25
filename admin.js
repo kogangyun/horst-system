@@ -1,135 +1,235 @@
-// 관리자 권한 확인
+import { db } from "./firebase.js";
+import {
+  ref, get, set, remove, update
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+// 🔐 관리자 확인
 const currentUser = localStorage.getItem("currentUser");
-const users = JSON.parse(localStorage.getItem("users") || "{}");
-const user = users[currentUser];
-if (!user || user.role !== "admin") {
-  alert("관리자만 접근 가능합니다.");
-  location.href = "index.html";
+get(ref(db, `users/${currentUser}`)).then(snap => {
+  if (!snap.exists() || snap.val().role !== "admin") {
+    alert("관리자만 접근 가능합니다.");
+    location.href = "index.html";
+  } else {
+    renderUserList();
+    renderBlockedUsers();
+    renderPendingClans();
+    renderNotices();
+    renderDisputes();
+  }
+});
+
+// ✅ 차단된 유저 목록
+function renderBlockedUsers() {
+  const ul = document.getElementById("blockedUsers");
+  ul.innerHTML = "";
+
+  get(ref(db, "users")).then(snap => {
+    if (!snap.exists()) return;
+    const users = snap.val();
+    Object.entries(users).forEach(([uid, user]) => {
+      if (user.isBlocked) {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span>${uid}</span>
+          <button onclick="unblockUser('${uid}')" class="ban-btn" style="background:#0ff; color:#000;">차단 해제</button>
+        `;
+        ul.appendChild(li);
+      }
+    });
+  });
 }
 
-// 클랜 신청 관리
-const clanRequests = JSON.parse(localStorage.getItem("clanRequests") || "{}");
-const pendingClans = document.getElementById("pendingClans");
+// ✅ 차단 해제
+window.unblockUser = async (uid) => {
+  await update(ref(db, `users/${uid}`), { isBlocked: false });
+  alert(`${uid} 님 차단 해제됨`);
+  renderBlockedUsers();
+  renderUserList();
+};
 
+// ✅ 유저 차단 (삭제 대신 플래그)
+window.banUser = async (uid) => {
+  if (!confirm(`${uid} 님을 차단하시겠습니까?`)) return;
+  await update(ref(db, `users/${uid}`), { isBlocked: true });
+  alert(`${uid} 님 차단됨`);
+  renderBlockedUsers();
+  renderUserList();
+};
+
+// ✅ 유저 검색 + 페이징
+let currentPage = 1;
+const usersPerPage = 10;
+
+window.renderUserList = () => {
+  const listEl = document.getElementById("userList");
+  const keyword = document.getElementById("searchUser")?.value?.toLowerCase() || "";
+
+  get(ref(db, "users")).then((snap) => {
+    if (!snap.exists()) return;
+    const users = Object.entries(snap.val())
+      .filter(([uid, data]) =>
+        uid.toLowerCase().includes(keyword) && !data.isBlocked && uid !== currentUser
+      );
+
+    const totalPages = Math.ceil(users.length / usersPerPage);
+    currentPage = Math.min(currentPage, totalPages || 1);
+    const start = (currentPage - 1) * usersPerPage;
+    const pagedUsers = users.slice(start, start + usersPerPage);
+
+    listEl.innerHTML = "";
+    pagedUsers.forEach(([uid, data]) => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span>${uid} (${data.role || "user"})</span>
+        <button onclick="banUser('${uid}')" class="ban-btn">❌ 추방</button>
+      `;
+      listEl.appendChild(li);
+    });
+
+    renderPagination(totalPages);
+  });
+};
+
+function renderPagination(totalPages) {
+  const container = document.getElementById("userList");
+  const nav = document.createElement("div");
+  nav.style.marginTop = "10px";
+
+  for (let i = 1; i <= totalPages; i++) {
+    const btn = document.createElement("button");
+    btn.textContent = i;
+    btn.onclick = () => {
+      currentPage = i;
+      renderUserList();
+    };
+    if (i === currentPage) btn.style.fontWeight = "bold";
+    nav.appendChild(btn);
+  }
+
+  container.appendChild(nav);
+}
+
+// ✅ 클랜 신청
 function renderPendingClans() {
-  pendingClans.innerHTML = '';
-  Object.entries(clanRequests).forEach(([clanName, data]) => {
-    const applicants = data.applicants || [data.requester];
-    const highlight = applicants.length >= 5 ? "<strong>(신청자 많음)</strong>" : "";
-    const li = document.createElement("li");
-    li.innerHTML = `${clanName} - 신청자 수: ${applicants.length} ${highlight} <button onclick="approveClan('${clanName}')">승인</button>`;
-    pendingClans.appendChild(li);
+  const ul = document.getElementById("pendingClans");
+  ul.innerHTML = "";
+  get(ref(db, "clanRequests")).then((snap) => {
+    if (!snap.exists()) return;
+    const data = snap.val();
+    Object.entries(data).forEach(([clanName, val]) => {
+      const applicants = val.applicants || [val.requester];
+      const li = document.createElement("li");
+      li.innerHTML = `
+        ${clanName} (${applicants.length}명 신청)
+        <button onclick="approveClan('${clanName}')">승인</button>`;
+      ul.appendChild(li);
+    });
   });
 }
 
-function approveClan(clanName) {
-  const applicants = clanRequests[clanName].applicants || [clanRequests[clanName].requester];
-  applicants.forEach(userId => {
-    if (users[userId] && !users[userId].clan) {
-      users[userId].clan = clanName;
-    }
-  });
-  delete clanRequests[clanName];
-  localStorage.setItem("users", JSON.stringify(users));
-  localStorage.setItem("clanRequests", JSON.stringify(clanRequests));
-  alert(`클랜 \"${clanName}\" 승인 완료`);
+window.approveClan = async (clanName) => {
+  const snap = await get(ref(db, `clanRequests/${clanName}`));
+  if (!snap.exists()) return;
+  const { applicants = [], requester } = snap.val();
+  const targets = applicants.length ? applicants : [requester];
+
+  for (const uid of targets) {
+    await update(ref(db, `users/${uid}`), { clan: clanName });
+  }
+
+  await remove(ref(db, `clanRequests/${clanName}`));
+  alert(`클랜 "${clanName}" 승인 완료`);
   renderPendingClans();
-}
+};
 
-renderPendingClans();
-
-// 공지사항 관리
-const notices = JSON.parse(localStorage.getItem("notices") || "[]");
-const noticeList = document.getElementById("noticeList");
-const noticeForm = document.getElementById("noticeForm");
-
-noticeForm.addEventListener("submit", (e) => {
+// ✅ 공지사항 관리
+document.getElementById("noticeForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const content = document.getElementById("noticeContent").value.trim();
   if (!content) return alert("공지 내용을 입력하세요.");
+  const snap = await get(ref(db, "notices"));
+  const notices = snap.exists() ? snap.val() : [];
   notices.push(content);
-  localStorage.setItem("notices", JSON.stringify(notices));
-  renderNotices();
+  await set(ref(db, "notices"), notices);
   document.getElementById("noticeContent").value = "";
+  renderNotices();
 });
 
 function renderNotices() {
-  noticeList.innerHTML = '';
-  [...notices].reverse().forEach((notice, index) => {
-    const li = document.createElement("li");
-    li.innerHTML = `${notice} <button onclick="deleteNotice(${index})">삭제</button>`;
-    noticeList.appendChild(li);
+  const ul = document.getElementById("noticeList");
+  ul.innerHTML = "";
+  get(ref(db, "notices")).then((snap) => {
+    if (!snap.exists()) return;
+    snap.val().slice().reverse().forEach((text, i) => {
+      const li = document.createElement("li");
+      li.innerHTML = `${text} <button onclick="deleteNotice(${i})">삭제</button>`;
+      ul.appendChild(li);
+    });
   });
 }
 
-function deleteNotice(index) {
-  notices.splice(index, 1);
-  localStorage.setItem("notices", JSON.stringify(notices));
+window.deleteNotice = async (index) => {
+  const snap = await get(ref(db, "notices"));
+  if (!snap.exists()) return;
+  const list = snap.val();
+  list.splice(index, 1);
+  await set(ref(db, "notices"), list);
   renderNotices();
-}
+};
 
-renderNotices();
-
-// 이의 제기 관리
-const disputes = JSON.parse(localStorage.getItem("disputes") || "[]");
-const disputeList = document.getElementById("disputeList");
-
+// ✅ 이의제기 관리 + 24시간 지나면 자동 삭제
 function renderDisputes() {
-  disputeList.innerHTML = '';
-  [...disputes].reverse().forEach((dispute, i) => {
-    const actualIndex = disputes.length - 1 - i;
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${dispute.matchId}</td>
-      <td>${dispute.status}</td>
-      <td><button onclick="resolveDispute(${actualIndex})">해결</button></td>
-    `;
-    disputeList.appendChild(tr);
+  const tbody = document.getElementById("disputeList");
+  tbody.innerHTML = "";
+
+  get(ref(db, "matchDisputes")).then((snap) => {
+    if (!snap.exists()) return;
+    const all = snap.val();
+    const now = Date.now();
+
+    Object.entries(all).forEach(([matchId, dispute]) => {
+      const ts = new Date(dispute.timestamp).getTime();
+      const resolved = dispute.status === "resolved";
+
+      if (resolved && now - ts > 24 * 60 * 60 * 1000) {
+        remove(ref(db, `matchDisputes/${matchId}`));
+        return;
+      }
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${matchId}</td>
+        <td>${dispute.status || "대기 중"}</td>
+        <td>
+          ${dispute.status !== "resolved"
+            ? `<button onclick="resolveDispute('${matchId}')">해결</button>`
+            : "✅"}
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
   });
 }
 
-function resolveDispute(index) {
-  disputes[index].status = 'resolved';
-  localStorage.setItem("disputes", JSON.stringify(disputes));
-  const stillPending = disputes.some(d => d.status !== "resolved");
-  if (!stillPending) {
-    localStorage.setItem("matchingPaused", "false");
-    alert("📗 모든 이의제기가 해결되어 매칭이 다시 재개됩니다.");
-  }
+window.resolveDispute = async (matchId) => {
+  await update(ref(db, `matchDisputes/${matchId}`), {
+    status: "resolved",
+    timestamp: new Date().toISOString()
+  });
+  alert("이의제기 해결됨");
   renderDisputes();
-}
+};
 
-renderDisputes();
+// ✅ 시즌 저장
+window.saveSeason = () => {
+  const val = document.getElementById("seasonInput").value.trim();
+  if (!val) return alert("내용을 입력하세요.");
+  localStorage.setItem("seasonText", val);
+  alert("시즌 정보 저장됨");
+};
 
-// 문제 유저 차단
-const blockedUsers = JSON.parse(localStorage.getItem("blockedUsers") || "[]");
-const blockedUserList = document.getElementById("blockedUsers");
-
-function blockUser() {
-  const username = document.getElementById("blockUser").value.trim();
-  if (!username) return alert("아이디를 입력하세요.");
-  if (blockedUsers.includes(username)) return alert("이미 차단된 유저입니다.");
-
-  blockedUsers.push(username);
-  localStorage.setItem("blockedUsers", JSON.stringify(blockedUsers));
-
-  // 사용자 객체에도 반영
-  if (users[username]) {
-    users[username].blocked = true;
-    localStorage.setItem("users", JSON.stringify(users));
-  }
-
-  renderBlockedUsers();
-  document.getElementById("blockUser").value = "";
-}
-
-function renderBlockedUsers() {
-  blockedUserList.innerHTML = '';
-  blockedUsers.forEach(user => {
-    const li = document.createElement("li");
-    li.textContent = user;
-    blockedUserList.appendChild(li);
-  });
-}
-
-renderBlockedUsers();
+// ✅ 로그아웃
+window.logout = () => {
+  localStorage.removeItem("currentUser");
+  location.href = "index.html";
+};

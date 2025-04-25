@@ -115,12 +115,13 @@
 
   <div class="box">
     <div class="section-title">🔍 실시간 매칭</div>
-    <p id="matchStatus">현재 대기 중...</p>
-    <p id="realtimeQueueStatus">매칭 대기 인원: 0명</p>
-    <div id="matchTimer"></div>
-    <button onclick="joinRealtimeMatch()">⚔️ 매칭 참가</button>
-    <div id="matchResultBox" style="margin-top: 20px;"></div>
+    <p id="statusText">현재 대기 중...</p>
+    <p id="timer">경과 시간: 0초</p>
+    <button onclick="joinMatch()">⚔️ 매칭 참가</button>
+    <button onclick="cancelMatch()">❌ 매칭 취소</button>
+    <div id="matchResult" style="margin-top: 20px;"></div>
   </div>
+  
 
   <div class="box">
     <div class="section-title">📅 시즌 정보</div>

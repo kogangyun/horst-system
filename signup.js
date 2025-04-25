@@ -4,7 +4,7 @@ import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/9
 import { database } from "./firebase.js";
 
 function signup() {
-  const id = document.getElementById("username").value.trim();
+  const id = document.getElementById("username").value.trim().toLowerCase();
   const pw = document.getElementById("password").value;
   const confirm = document.getElementById("confirm").value;
 
@@ -24,7 +24,7 @@ function signup() {
   // 비밀번호 유효성 검사
   const pwValid = pw.length >= 6 && /[a-zA-Z]/.test(pw) && /[0-9]/.test(pw);
   if (!pwValid) {
-    alert("비밀번호는 6자 이상이어야 하며, 영문과 숫자를 포함해야 합니다.");
+    alert("비밀번호는 6자 이상이며, 영문과 숫자를 포함해야 합니다.");
     return;
   }
 
@@ -34,7 +34,9 @@ function signup() {
     return;
   }
 
-  const userRef = ref(database, `users/${id}`);
+  const db = getDatabase();
+  const userRef = ref(db, `users/${id}`);
+
   get(userRef).then((snapshot) => {
     if (snapshot.exists()) {
       const userData = snapshot.val();
@@ -50,24 +52,26 @@ function signup() {
 
       const newUser = {
         password: pw,
-        status,
-        role,
+        status,             // "pending" 또는 "approved"
+        role,               // "user" 또는 "admin"
         blocked: false,
-        joinedAt
+        joinedAt            // 가입일 (30일 유효기간 체크용)
       };
 
-      set(userRef, newUser).then(() => {
-        localStorage.setItem("currentUser", id);
-        if (role === "admin") {
-          location.href = "admin.html";
-        } else {
-          alert("가입이 완료되었습니다! 관리자의 승인을 기다려주세요.");
-          location.href = "index.html";
-        }
-      }).catch((error) => {
-        console.error("가입 중 오류 발생:", error);
-        alert("가입 중 오류가 발생했습니다. 다시 시도해주세요.");
-      });
+      set(userRef, newUser)
+        .then(() => {
+          localStorage.setItem("currentUser", id);
+          if (role === "admin") {
+            location.href = "admin.html";
+          } else {
+            alert("가입이 완료되었습니다! 관리자의 승인을 기다려주세요.");
+            location.href = "index.html";
+          }
+        })
+        .catch((error) => {
+          console.error("가입 중 오류 발생:", error);
+          alert("⚠️ 가입 중 오류가 발생했습니다. 다시 시도해주세요.");
+        });
     }
   });
 }
