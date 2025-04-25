@@ -2,18 +2,16 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
-  <title>HORST 클랜 상세 정보</title>
+  <title>HORST 클랜 관리</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
-      margin: 0;
       background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
       color: #e3e3e3;
       font-family: 'Orbitron', sans-serif;
       text-align: center;
-      overflow-x: hidden;
+      margin: 0;
     }
-
     body::before {
       content: "";
       position: fixed;
@@ -25,26 +23,17 @@
       z-index: -1;
       opacity: 0.08;
     }
-
     @keyframes neonShift {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-
     h1 {
       color: #7b2ff7;
       font-size: 2rem;
       margin-top: 40px;
       text-shadow: 0 0 10px #7b2ff7;
     }
-
-    h2 {
-      color: #00f2ff;
-      margin-bottom: 16px;
-      text-shadow: 0 0 6px #00f2ff;
-    }
-
     .box {
       background: #111;
       border: 2px solid #7b2ff7;
@@ -55,7 +44,21 @@
       margin: 30px auto;
       padding: 30px;
     }
-
+    ul {
+      list-style: none;
+      padding: 0;
+      text-align: left;
+    }
+    li {
+      background: #1e1e1e;
+      padding: 10px;
+      margin-bottom: 8px;
+      border: 1px solid #00f2ff;
+      border-radius: 8px;
+      width: 90%;
+      max-width: 520px;
+      box-shadow: 0 0 8px rgba(0, 242, 255, 0.2);
+    }
     button {
       padding: 10px 20px;
       margin: 10px 5px;
@@ -67,57 +70,54 @@
       cursor: pointer;
       box-shadow: 0 0 8px #00f2ff;
     }
-
     button:hover {
       transform: scale(1.05);
       opacity: 0.95;
     }
-
-    select {
-      padding: 10px;
-      font-size: 1rem;
-      border-radius: 6px;
-      background: #000;
-      color: #00f2ff;
-      border: 1px solid #7b2ff7;
-    }
-
-    ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-    }
-
-    li {
-      background: #1e1e1e;
-      border: 1px solid #00f2ff;
-      margin: 8px auto;
-      padding: 12px;
-      border-radius: 8px;
-      width: 90%;
-      max-width: 520px;
-      box-shadow: 0 0 8px rgba(0, 242, 255, 0.2);
-    }
   </style>
+  <script type="module">
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { database } from './firebase.js';
+
+    const currentUser = localStorage.getItem("currentUser");
+    const pendingList = document.getElementById("pendingList");
+
+    const clansRef = ref(database, 'clans');
+    const usersRef = ref(database, 'users');
+
+    async function renderRequests() {
+      pendingList.innerHTML = "";
+      const snapshot = await get(clansRef);
+      const userSnap = await get(ref(database, `users/${currentUser}`));
+      if (!snapshot.exists() || !userSnap.exists()) return;
+
+      const clanData = snapshot.val();
+      const user = userSnap.val();
+      const myClan = user.clan;
+
+      Object.entries(clanData).forEach(([clanName, data]) => {
+        const li = document.createElement("li");
+        li.innerHTML = ` 
+          <strong><a href="clan-detail.html?clanName=${clanName}">${clanName}</a></strong><br>
+          클랜장: ${data.leader}<br>
+          구성원: ${(data.members || []).join(", ")}<br>
+          신청자 수: ${data.members.length}/5<br> 
+        `;
+        pendingList.appendChild(li);
+      });
+    }
+
+    renderRequests();
+  </script>
 </head>
 <body>
-
-  <h1>🏰 HORST 클랜 상세 페이지</h1>
-
+  <h1>🏰 HORST 클랜 관리</h1>
   <div class="box">
-    <h2>🔍 클랜 정보</h2>
-    <div id="clanInfo">로딩 중...</div>
+    <h2>🔍 클랜 목록</h2>
+    <ul id="pendingList">로딩 중...</ul>
   </div>
-
-  <div class="box">
-    <h2>⚙️ 클랜 관리</h2>
-    <div id="clanActions"></div>
-  </div>
-
   <div class="box">
     <button onclick="location.href='main.html'">🔙 메인으로 돌아가기</button>
   </div>
-
-  <script src="clan-detail.js"></script>
 </body>
 </html>

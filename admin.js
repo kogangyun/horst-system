@@ -12,7 +12,6 @@ get(ref(db, `users/${currentUser}`)).then(snap => {
   } else {
     renderUserList();
     renderBlockedUsers();
-    renderPendingClans();
     renderNotices();
     renderDisputes();
   }
@@ -29,7 +28,7 @@ function renderBlockedUsers() {
     Object.entries(users).forEach(([uid, user]) => {
       if (user.isBlocked) {
         const li = document.createElement("li");
-        li.innerHTML = `
+        li.innerHTML = ` 
           <span>${uid}</span>
           <button onclick="unblockUser('${uid}')" class="ban-btn" style="background:#0ff; color:#000;">차단 해제</button>
         `;
@@ -79,7 +78,7 @@ window.renderUserList = () => {
     listEl.innerHTML = "";
     pagedUsers.forEach(([uid, data]) => {
       const li = document.createElement("li");
-      li.innerHTML = `
+      li.innerHTML = ` 
         <span>${uid} (${data.role || "user"})</span>
         <button onclick="banUser('${uid}')" class="ban-btn">❌ 추방</button>
       `;
@@ -108,39 +107,6 @@ function renderPagination(totalPages) {
 
   container.appendChild(nav);
 }
-
-// ✅ 클랜 신청
-function renderPendingClans() {
-  const ul = document.getElementById("pendingClans");
-  ul.innerHTML = "";
-  get(ref(db, "clanRequests")).then((snap) => {
-    if (!snap.exists()) return;
-    const data = snap.val();
-    Object.entries(data).forEach(([clanName, val]) => {
-      const applicants = val.applicants || [val.requester];
-      const li = document.createElement("li");
-      li.innerHTML = `
-        ${clanName} (${applicants.length}명 신청)
-        <button onclick="approveClan('${clanName}')">승인</button>`;
-      ul.appendChild(li);
-    });
-  });
-}
-
-window.approveClan = async (clanName) => {
-  const snap = await get(ref(db, `clanRequests/${clanName}`));
-  if (!snap.exists()) return;
-  const { applicants = [], requester } = snap.val();
-  const targets = applicants.length ? applicants : [requester];
-
-  for (const uid of targets) {
-    await update(ref(db, `users/${uid}`), { clan: clanName });
-  }
-
-  await remove(ref(db, `clanRequests/${clanName}`));
-  alert(`클랜 "${clanName}" 승인 완료`);
-  renderPendingClans();
-};
 
 // ✅ 공지사항 관리
 document.getElementById("noticeForm").addEventListener("submit", async (e) => {

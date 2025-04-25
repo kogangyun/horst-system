@@ -28,11 +28,11 @@
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-    .logo {
-      margin-top: 30px;
-    }
-    .logo img {
-      width: 120px;
+    h1 {
+      color: #7b2ff7;
+      font-size: 2rem;
+      margin-top: 40px;
+      text-shadow: 0 0 10px #7b2ff7;
     }
     .box {
       background: #111;
@@ -44,53 +44,42 @@
       margin: 30px auto;
       padding: 30px;
     }
-    input, button {
-      margin-top: 10px;
-      padding: 10px;
-      font-size: 16px;
-      border-radius: 5px;
-      font-family: 'Orbitron', sans-serif;
-    }
-    button {
-      background: linear-gradient(90deg, #00f2ff, #7b2ff7);
-      color: black;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
-      margin: 10px;
-      box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
-    }
-    button:hover {
-      transform: scale(1.05);
-      opacity: 0.95;
-    }
     ul {
       list-style: none;
       padding: 0;
       text-align: left;
     }
-    ul li {
+    li {
       background: #1e1e1e;
       padding: 10px;
       margin-bottom: 8px;
       border: 1px solid #00f2ff;
       border-radius: 8px;
+      width: 90%;
+      max-width: 520px;
+      box-shadow: 0 0 8px rgba(0, 242, 255, 0.2);
     }
-    h1 {
-      color: #00f2ff;
-      text-shadow: 0 0 5px #00f2ff;
+    button {
+      padding: 10px 20px;
+      margin: 10px 5px;
+      background: linear-gradient(90deg, #00f2ff, #7b2ff7);
+      color: black;
+      font-weight: bold;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      box-shadow: 0 0 8px #00f2ff;
     }
-    h2 {
-      color: #7b2ff7;
-      margin-top: 30px;
+    button:hover {
+      transform: scale(1.05);
+      opacity: 0.95;
     }
   </style>
   <script type="module">
-    import { getDatabase, ref, onValue, set, get, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
     import { database } from './firebase.js';
 
     const currentUser = localStorage.getItem("currentUser");
-    const clanNameInput = document.getElementById("clanNameInput");
     const pendingList = document.getElementById("pendingList");
 
     const clansRef = ref(database, 'clans');
@@ -107,93 +96,28 @@
       const myClan = user.clan;
 
       Object.entries(clanData).forEach(([clanName, data]) => {
-        if (clanName === myClan) {
-          const li = document.createElement("li");
-          li.innerHTML = `
-            <strong>${clanName}</strong><br>
-            클랜장: ${data.leader}<br>
-            구성원: ${(data.members || []).join(", ")}<br>
-          `;
-
-          if (data.leader === currentUser) {
-            (data.pending || []).forEach(member => {
-              li.innerHTML += `<div>${member}
-                <button onclick="approve('${clanName}', '${member}')">✔</button>
-                <button onclick="reject('${clanName}', '${member}')">✖</button>
-              </div>`;
-            });
-          }
-
-          pendingList.appendChild(li);
-        }
+        const li = document.createElement("li");
+        li.innerHTML = ` 
+          <strong><a href="clan-detail.html?clanName=${clanName}">${clanName}</a></strong><br>
+          클랜장: ${data.leader}<br>
+          구성원: ${(data.members || []).join(", ")}<br>
+          신청자 수: ${data.members.length}/5<br> 
+        `;
+        pendingList.appendChild(li);
       });
     }
 
-    async function requestClan() {
-      const name = clanNameInput.value.trim();
-      if (!name) return alert("클랜명을 입력하세요.");
-
-      const clanSnapshot = await get(ref(database, `clans/${name}`));
-      if (clanSnapshot.exists()) return alert("이미 존재하는 클랜입니다.");
-
-      const newClan = {
-        leader: currentUser,
-        members: [currentUser],
-        pending: []
-      };
-      await set(ref(database, `clans/${name}`), newClan);
-      await update(ref(database, `users/${currentUser}`), { clan: name });
-      alert("클랜 생성 완료");
-      renderRequests();
-    }
-
-    async function approve(clanName, member) {
-      const clanRef = ref(database, `clans/${clanName}`);
-      const snapshot = await get(clanRef);
-      const data = snapshot.val();
-      const newPending = (data.pending || []).filter(m => m !== member);
-      const newMembers = [...(data.members || []), member];
-
-      await update(clanRef, {
-        pending: newPending,
-        members: newMembers
-      });
-      await update(ref(database, `users/${member}`), { clan: clanName });
-      alert("승인되었습니다");
-      renderRequests();
-    }
-
-    async function reject(clanName, member) {
-      const clanRef = ref(database, `clans/${clanName}`);
-      const snapshot = await get(clanRef);
-      const data = snapshot.val();
-      const newPending = (data.pending || []).filter(m => m !== member);
-
-      await update(clanRef, { pending: newPending });
-      alert("거절되었습니다");
-      renderRequests();
-    }
-
-    window.requestClan = requestClan;
-    window.approve = approve;
-    window.reject = reject;
     renderRequests();
   </script>
 </head>
 <body>
-  <div class="logo">
-    <img src="horst-logo.png" alt="HORST 로고">
+  <h1>🏰 HORST 클랜 관리</h1>
+  <div class="box">
+    <h2>🔍 클랜 목록</h2>
+    <ul id="pendingList">로딩 중...</ul>
   </div>
   <div class="box">
-    <h1>🛡 클랜 생성 신청</h1>
-    <p>클랜명을 입력해 신청하세요. 클랜장은 첫 번째 신청자입니다.</p>
-    <input type="text" id="clanNameInput" placeholder="클랜명 입력" />
-    <br>
-    <button onclick="requestClan()">신청하기</button>
-  </div>
-  <div class="box">
-    <h2>내 클랜 정보</h2>
-    <ul id="pendingList"></ul>
+    <button onclick="location.href='main.html'">🔙 메인으로 돌아가기</button>
   </div>
 </body>
 </html>
