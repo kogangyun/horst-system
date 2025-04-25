@@ -173,11 +173,22 @@ function createBalancedTeams(players) {
   return { teamA, teamB };
 }
 
+// ✅ 추가: 다음 금요일 19시 계산 함수
+function getNextFridayAt7PM() {
+  const now = new Date();
+  const day = now.getDay();
+  const daysUntilFriday = (5 - day + 7) % 7 || 7;
+  const target = new Date(now);
+  target.setDate(now.getDate() + daysUntilFriday);
+  target.setHours(19, 0, 0, 0);
+  return target;
+}
+
 // ✅ 매주 금요일 오후 7시마다 자동 오픈
 (function autoOpenTournament() {
   const now = new Date();
-  const isFriday = true; // 테스트용 강제 true
-
+  const tournamentRef = ref(db, "tournament");
+  const newStart = getNextFridayAt7PM();
   const mapList = [
     "영원의 전쟁터", "용의 둥지", "하늘 사원",
     "브락시스 항전", "파멸의 탑", "볼스카야 공장",
@@ -185,11 +196,8 @@ function createBalancedTeams(players) {
   ];
   const randomMap = mapList[Math.floor(Math.random() * mapList.length)];
 
-  const tournamentRef = ref(db, "tournament");
   get(tournamentRef).then((snap) => {
     const current = snap.val();
-    const newStart = new Date();
-    newStart.setHours(19, 0, 0, 0);
     if (!current || new Date(current.startTime) < now || current.status === "ended") {
       set(tournamentRef, {
         startTime: newStart.toISOString(),
@@ -203,11 +211,11 @@ function createBalancedTeams(players) {
   });
 })();
 
-// ✅ 토너먼트 버튼 처리 포함
 window.registerTournament = async () => {
   const snap = await get(ref(db, "tournament"));
   const data = snap.val();
   if (!data) return;
+  if (!Array.isArray(data.participants)) data.participants = [];
   if (!data.participants.includes(currentUser)) {
     data.participants.push(currentUser);
     await update(ref(db, "tournament"), { participants: data.participants });
@@ -226,7 +234,6 @@ window.unregisterTournament = async () => {
   alert("❌ 참가 신청이 취소되었습니다.");
 };
 
-// ✅ 실시간 토너먼트 정보 렌더링
 onValue(ref(db, "tournament"), async (snap) => {
   const data = snap.val();
   if (!data) {
@@ -240,7 +247,9 @@ onValue(ref(db, "tournament"), async (snap) => {
   const participants = data.participants || [];
   const mapName = data.map || "맵 정보 없음";
 
-  const remaining = `${Math.floor(diffMs / (1000 * 60 * 60 * 24))}일 ${Math.floor(diffMs / (1000 * 60 * 60)) % 24}시간 ${(Math.floor(diffMs / (1000 * 60)) % 60)}분 ${(Math.floor(diffMs / 1000) % 60)}초`;
+  const remaining = diffMs > 0
+    ? `${Math.floor(diffMs / (1000 * 60 * 60 * 24))}일 ${Math.floor(diffMs / (1000 * 60 * 60)) % 24}시간 ${(Math.floor(diffMs / (1000 * 60)) % 60)}분 ${(Math.floor(diffMs / 1000) % 60)}초`
+    : "0일 0시간 0분 0초";
 
   tournamentInfo.innerHTML = `
     <p>📍 맵: <strong style="color:skyblue;">${mapName}</strong></p>
