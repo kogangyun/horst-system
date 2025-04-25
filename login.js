@@ -1,5 +1,5 @@
 // login.js
-import { getDatabase, ref, get, child, set } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
+import { getDatabase, ref, get, child, set, update } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 import { db } from "./firebase.js";
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -49,12 +49,18 @@ async function login() {
     // 🕒 승인 여부 확인
     if (user.status !== "approved") {
       errorBox.innerText = "가입 승인 대기 중입니다.";
-      alert("📢 가입 신청이 완료되었습니다. 승인을 위해 5,000원을 입금해 주세요.");
+      alert("📢 가입 신청이 완료되었습니다.\n승인을 위해 5,000원을 입금해 주세요.\n첫달은 무료입니다. 궁금한 사항은 오픈카톡으로 문의 부탁드립니다:\nhttps://open.kakao.com/o/sn8r4Psh");
       return;
     }
 
+    // ✅ 가입 시점(joinedAt) 없으면 저장
+    if (!user.joinedAt) {
+      user.joinedAt = new Date().toISOString();
+      await set(ref(db, `users/${id}`), user);
+    }
+
     // ⏳ 30일 유효기간 체크
-    const joinedAt = new Date(user.joinedAt || new Date());
+    const joinedAt = new Date(user.joinedAt);
     const today = new Date();
     const daysPassed = (today - joinedAt) / (1000 * 60 * 60 * 24);
 

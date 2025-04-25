@@ -21,13 +21,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   sorted.forEach((user, index) => {
     const tr = document.createElement("tr");
 
-    // ✨ 등급별 class 적용
+    // ✨ 점수에 따른 class 적용
     let pointClass = "";
-    if (user.role === "admin") pointClass = "admin-glow";
-    else if (user.points >= 2000) pointClass = "neon-glow";
-    else if (user.points >= 1500) pointClass = "high-rank";
-    else if (user.points >= 1000) pointClass = "mid-rank";
-    else pointClass = "low-rank";
+    if (user.role === "admin") {
+      pointClass = "admin-glow"; // 관리자는 특별한 클래스 적용
+    } else if (user.points >= 3400) {
+      pointClass = "neon-glow";  // 최고 점수
+    } else if (user.points >= 2700) {
+      pointClass = "high-glow";  // 상위 점수
+    } else if (user.points >= 2200) {
+      pointClass = "mid-upper-glow";  // 중상위 점수
+    } else if (user.points >= 1500) {
+      pointClass = "middle-glow";  // 중간 점수
+    } else if (user.points >= 1200) {
+      pointClass = "lower-glow";  // 하위 점수
+    } else {
+      pointClass = "default-glow";  // 기본 색상
+    }
 
     tr.innerHTML = `
       <td>${index + 1}</td>
