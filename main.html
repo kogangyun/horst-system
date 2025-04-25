@@ -105,12 +105,24 @@
   <div class="box" id="welcomeBox"></div>
 
   <div class="box">
+    <div class="section-title">💳 이용 기간</div>
+    <p id="billingInfo">이용 기간 로딩 중...</p>
+  </div>
+  
+  <div class="box">
     <div class="section-title">메뉴</div>
     <button onclick="location.href='result.html'">📊 경기 결과 입력</button>
     <button onclick="location.href='ranking.html'">🏆 랭킹 보기</button>
     <button onclick="location.href='history.html'">📜 전적 보기</button>
     <button onclick="location.href='clan.html'">🏰 클랜 관리</button>
     <button onclick="logout()">🚪 로그아웃</button>
+  </div>
+
+  <div class="box">
+    <div class="section-title">🏅 토너먼트</div>
+    <p id="tournamentInfo">토너먼트 정보를 불러오는 중...</p>
+    <button onclick="joinTournament()">🎯 토너먼트 참가 신청</button>
+    <button onclick="viewTournamentBracket()">🗓️ 대진표 보기</button>
   </div>
 
   <div class="box">
@@ -121,7 +133,6 @@
     <button onclick="cancelMatch()">❌ 매칭 취소</button>
     <div id="matchResult" style="margin-top: 20px;"></div>
   </div>
-  
 
   <div class="box">
     <div class="section-title">📅 시즌 정보</div>

@@ -23,19 +23,20 @@
     }
 
     .login-box {
-      max-width: 400px;
-      margin: 120px auto;
+      max-width: 460px;
+      margin: 100px auto;
       background: #111;
       border: 2px solid #00ffff;
       padding: 30px;
       border-radius: 12px;
-      box-shadow: 0 0 20px #00ffff99;
+      box-shadow: 0 0 25px #00ffff99;
     }
 
     .login-box h2 {
       color: #00eaff;
       margin-bottom: 20px;
       text-shadow: 0 0 8px #00eaff;
+      font-size: 28px;
     }
 
     .login-box input {
@@ -69,7 +70,7 @@
     .login-box p {
       margin-top: 10px;
       color: #ffaa00;
-      font-size: 14px;
+      font-size: 15px;
     }
 
     #error {
@@ -81,6 +82,33 @@
       width: 180px;
       margin-top: 40px;
       filter: drop-shadow(0 0 10px #00eaff);
+    }
+
+    .notice-box {
+      margin-top: 30px;
+      background: #1c1c1c;
+      border: 1px solid #ffaa00;
+      border-radius: 10px;
+      padding: 20px;
+      color: #eee;
+      font-size: 15.5px;
+      line-height: 1.7;
+      box-shadow: 0 0 15px #ffaa0099;
+      text-align: left;
+    }
+
+    .notice-box strong {
+      color: #00ffff;
+    }
+
+    .notice-box .danger {
+      color: #ff4444;
+    }
+
+    .notice-box a {
+      color: #00ffff;
+      font-weight: bold;
+      word-break: break-all;
     }
   </style>
 
@@ -102,8 +130,22 @@
     </p>
 
     <p style="margin-top: 8px;">
-      ✨ <a href="https://open.kakao.com/o/sn8r4Psh" target="_blank" style="color: #00ffff; font-weight: bold;">오픈카톡으로 문의하기</a>
+      ✨ <a href="https://open.kakao.com/o/sn8r4Psh" target="_blank">오픈카톡으로 문의하기</a>
     </p>
+
+<!-- 🔔 안내사항 -->
+<div class="notice-box">
+  <strong>📢 HORST 이용 시 유의사항</strong><br><br>
+  • 게임은 <strong>사용자 지정 게임</strong>으로 생성해야 합니다.<br>
+  • <strong>폭리게임 규정</strong>에 맞춰 공정하게 플레이해주세요.<br>
+  • <span class="danger">매치 결과가 입력되지 않으면 다음 매치를 할 수 없습니다.</span><br>
+  • <span class="danger">게임 내 전체 채팅은 금지</span>되며, <strong>귓말만 허용</strong>됩니다.<br>
+  • <span class="danger">의도적인 게임 방해</span> 시 <strong>영구 추방</strong>될 수 있습니다.<br>
+  • <span class="danger">모든 매치는 반드시 채널 <strong>horst</strong> 내에서만 이루어져야 합니다.<br>
+    매칭된 모든 플레이어는 꼭 채널에 상주해주세요.</span><br>
+  • <span style="color: #ffaa00;">가입 신청은 운영진의 검토 후 승인되며, 운영 기준에 따라 거절될 수 있습니다.</span><br><br>
+  👉 문의: <a href="https://open.kakao.com/o/sn8r4Psh" target="_blank">https://open.kakao.com/o/sn8r4Psh</a>
+</div>
 
     <p id="error"></p>
   </div>

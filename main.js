@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { ref, get, onValue, set, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 const currentUser = localStorage.getItem("currentUser");
 if (!currentUser) {
@@ -7,171 +7,79 @@ if (!currentUser) {
   location.href = "index.html";
 }
 
-const welcomeBox = document.getElementById("welcomeBox");
-const seasonInfoDiv = document.getElementById("seasonInfo");
-const noticeUl = document.getElementById("noticeList");
-const matchStatus = document.getElementById("statusText");
-const matchTimer = document.getElementById("timer");
-const matchResultBox = document.getElementById("matchResult");
-const billingInfo = document.getElementById("billingInfo");
+const tournamentInfo = document.getElementById("tournamentInfo");
 
-const savedSeason = localStorage.getItem("seasonText") || "시즌 1 : 2025년 5월 1일 ~ 6월 30일";
-const noticeList = JSON.parse(localStorage.getItem("notices") || "[]");
-let matchQueue = [];
-let matchTime = 0;
-let timerInterval = null;
-
-function renderNotices() {
-  noticeUl.innerHTML = "";
-  noticeList.slice().reverse().forEach((notice) => {
-    const li = document.createElement("li");
-    li.innerHTML = `<div style="background:#222; padding:10px; border:1px solid gold; border-radius:6px;">📌 ${notice}</div>`;
-    noticeUl.appendChild(li);
-  });
-}
-renderNotices();
-
-// ✅ 유저 데이터 렌더링 및 기간 계산
-get(ref(db, `users/${currentUser}`)).then(snapshot => {
-  if (!snapshot.exists()) {
-    alert("사용자 정보를 찾을 수 없습니다.");
-    location.href = "index.html";
+// ✅ 토너먼트 상태 실시간 업데이트
+onValue(ref(db, "tournament"), (snap) => {
+  const data = snap.val();
+  if (!data) {
+    tournamentInfo.innerHTML = "현재 등록된 토너먼트가 없습니다.";
     return;
   }
 
-  const user = snapshot.val();
-  const clan = user.clan ? `[${user.clan}] ` : "";
-  welcomeBox.innerHTML = `<h2>안녕하세요, ${clan + currentUser}님!</h2>
-  <p>티어: ${user.tier || "없음"} / 점수: ${user.points || 0}</p>`;
+  const now = new Date();
+  const startTime = new Date(data.startTime);
+  const diffMs = startTime - now;
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
 
-  // 💳 이용 기간 계산
-  const joinedAt = new Date(user.joinedAt);
-  const today = new Date();
-  const daysUsed = Math.floor((today - joinedAt) / (1000 * 60 * 60 * 24));
-  const daysLeft = 30 - daysUsed;
+  tournamentInfo.innerHTML = `
+    <p>토너먼트 시작까지: <span style="color:lime;">${diffHours}시간 ${diffMinutes}분 남음</span></p>
+    <p>참가 현황: <span style="color:gold;">${data.participants ? data.participants.length : 0}/20명</span></p>
+    <button onclick="joinTournament()">참가 신청</button>
+    <button onclick="cancelTournament()">신청 취소</button>
+  `;
 
-  billingInfo.innerHTML =
-    daysLeft >= 0
-      ? `<span style="color:${daysLeft <= 5 ? 'orange' : 'lime'}">남은 이용 기간: ${daysLeft}일</span>`
-      : `<span style="color:red;">⛔ 이용 기간이 만료되었습니다. 연장 필요!</span>`;
-
-  // 관리자만 시즌 편집 가능
-  if (user.role === "admin") {
-    seasonInfoDiv.innerHTML = `
-      <textarea id="seasonInput" rows="2">${savedSeason}</textarea><br>
-      <button onclick="saveSeason()">저장</button>`;
-  } else {
-    seasonInfoDiv.innerHTML = `<p>${savedSeason}</p>`;
+  // 🔥 금요일 7시 도달 시 처리
+  if (diffMs <= 0) {
+    if (data.participants && data.participants.length === 20) {
+      // 자동 팀 배정 후 이동
+      autoAssignTeams(data.participants);
+    } else {
+      tournamentInfo.innerHTML = `<span style="color:red;">정원이 충족되지 않아 시작되지 않았습니다.</span>`;
+    }
   }
 });
 
-// 📝 시즌 저장
-window.saveSeason = () => {
-  const newText = document.getElementById("seasonInput").value.trim();
-  if (!newText) return alert("내용을 입력하세요.");
-  localStorage.setItem("seasonText", newText);
-  alert("시즌 정보가 저장되었습니다.");
-  location.reload();
+// 참가 신청
+window.joinTournament = async () => {
+  const snap = await get(ref(db, "tournament"));
+  const data = snap.val();
+
+  if (!data.participants) data.participants = [];
+  if (data.participants.includes(currentUser)) return alert("이미 신청하셨습니다.");
+  if (data.participants.length >= 20) return alert("정원이 가득 찼습니다.");
+
+  data.participants.push(currentUser);
+  await update(ref(db, "tournament"), { participants: data.participants });
 };
 
-// 🔓 로그아웃
-window.logout = () => {
-  localStorage.removeItem("currentUser");
-  alert("로그아웃 되었습니다.");
-  location.href = "index.html";
+// 참가 취소
+window.cancelTournament = async () => {
+  const snap = await get(ref(db, "tournament"));
+  const data = snap.val();
+
+  if (!data.participants || !data.participants.includes(currentUser)) return alert("신청하지 않았습니다.");
+
+  data.participants = data.participants.filter(id => id !== currentUser);
+  await update(ref(db, "tournament"), { participants: data.participants });
 };
 
-// 🎮 매칭
-window.joinMatch = async () => {
-  const snap = await get(ref(db, "matchQueue"));
-  matchQueue = snap.exists() ? snap.val() : [];
-  if (matchQueue.includes(currentUser)) return alert("이미 대기 중입니다.");
+// 팀 자동 배정 및 페이지 이동
+async function autoAssignTeams(participants) {
+  const scoresSnap = await get(ref(db, "users"));
+  const scores = scoresSnap.val();
 
-  matchQueue.push(currentUser);
-  await set(ref(db, "matchQueue"), matchQueue);
-  updateStatus();
-  if (!timerInterval) startTimer();
-};
+  participants.sort((a, b) => (scores[b].points || 0) - (scores[a].points || 0));
 
-window.cancelMatch = async () => {
-  const snap = await get(ref(db, "matchQueue"));
-  matchQueue = snap.exists() ? snap.val() : [];
+  const teams = { A: [], B: [], C: [], D: [] };
+  participants.forEach((player, idx) => {
+    const teamKey = ['A', 'B', 'C', 'D'][idx % 4];
+    teams[teamKey].push(player);
+  });
 
-  matchQueue = matchQueue.filter(id => id !== currentUser);
-  await set(ref(db, "matchQueue"), matchQueue);
-  updateStatus();
-  clearTimer();
-};
+  await update(ref(db, "tournament"), { teams, status: "ongoing" });
 
-function updateStatus() {
-  matchStatus.innerText = `현재 ${matchQueue.length}/10명 대기 중...`;
-  if (matchQueue.length >= 10) {
-    clearTimer();
-
-    const players = matchQueue.slice(0, 10);
-    const teamData = createBalancedTeams(players);
-    const mapList = ["영원의 전쟁터", "용의 둥지", "하늘 사원", "브락시스 항전", "파멸의 탑", "볼스카야 공장", "저주의 골짜기", "거미 여왕의 무덤"];
-    const map = mapList[Math.floor(Math.random() * mapList.length)];
-    const matchId = `match-${Date.now()}`;
-    const match = {
-      id: matchId,
-      teamA: teamData.teamA,
-      teamB: teamData.teamB,
-      map,
-      timestamp: new Date().toISOString()
-    };
-
-    matchQueue = matchQueue.slice(10);
-    set(ref(db, "matchQueue"), matchQueue);
-    update(ref(db), {
-      [`matches/${matchId}`]: match
-    });
-
-    matchResultBox.innerHTML = `
-      <h3>🎮 매칭 완료!</h3>
-      <p><strong>맵:</strong> ${map}</p>
-      <p><strong>팀 A:</strong> ${match.teamA.join(", ")}</p>
-      <p><strong>팀 B:</strong> ${match.teamB.join(", ")}</p>
-    `;
-    matchStatus.innerText = "3초 후 결과 입력 화면으로 이동합니다...";
-    localStorage.setItem("currentMatch", JSON.stringify(match));
-    setTimeout(() => window.location.href = "result.html", 3000);
-  }
-}
-
-function startTimer() {
-  matchTime = 0;
-  matchTimer.innerText = `경과 시간: ${matchTime}초`;
-  timerInterval = setInterval(() => {
-    matchTime++;
-    matchTimer.innerText = `경과 시간: ${matchTime}초`;
-    updateStatus();
-  }, 1000);
-}
-
-function clearTimer() {
-  clearInterval(timerInterval);
-  timerInterval = null;
-  matchTimer.innerText = "";
-}
-
-function createBalancedTeams(players) {
-  const scores = JSON.parse(localStorage.getItem("userScores") || "{}");
-  const sorted = players.map(name => ({
-    name,
-    score: scores[name] || 1000
-  })).sort((a, b) => b.score - a.score);
-
-  const teamA = [], teamB = [];
-  let scoreA = 0, scoreB = 0;
-  for (const p of sorted) {
-    if (scoreA <= scoreB) {
-      teamA.push(p.name);
-      scoreA += p.score;
-    } else {
-      teamB.push(p.name);
-      scoreB += p.score;
-    }
-  }
-  return { teamA, teamB };
+  localStorage.setItem("tournamentTeams", JSON.stringify(teams));
+  location.href = "tournament.html";
 }
