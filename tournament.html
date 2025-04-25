@@ -61,30 +61,56 @@
       margin-top: 10px;
       color: #ffaa00;
     }
+
+    .register-btn {
+      margin-top: 20px;
+      background: linear-gradient(90deg, #00f2ff, #7b2ff7);
+      padding: 12px 24px;
+      border: none;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    .register-btn:hover {
+      transform: scale(1.05);
+      opacity: 0.9;
+    }
   </style>
 </head>
 <body>
   <h2>🏆 4강 토너먼트 대진표</h2>
+  <div id="tournamentInfo">토너먼트 정보를 불러오는 중...</div>
+
   <div id="bracket">로딩 중...</div>
+
+  <!-- 토너먼트 참가 버튼 -->
+  <button id="registerBtn" class="register-btn">토너먼트 참가</button>
 
   <script type="module">
     import { db } from './firebase.js';
     import { ref, get, set, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
     const bracket = document.getElementById("bracket");
+    const tournamentInfo = document.getElementById("tournamentInfo");
     const currentUser = localStorage.getItem("currentUser");
 
-    // 자동 다음 토너먼트 초기화
-    async function ensureUpcomingTournament() {
+    let tournamentData = {};
+
+    // 토너먼트 정보 초기화
+    async function initializeTournament() {
       const now = new Date();
       const snap = await get(ref(db, "tournament"));
       const data = snap.val();
-      const currentStart = new Date(data?.startTime || 0);
 
-      if (!data || now > currentStart) {
+      if (!data || new Date(data.startTime) <= now || data.status === "ended") {
+        // 새로운 토너먼트 시작 (매주 금요일 오후 7시)
         const nextFriday = new Date();
-        nextFriday.setDate(now.getDate() + ((12 - now.getDay()) % 7));
+        nextFriday.setDate(now.getDate() + ((12 - now.getDay()) % 7)); // 다음 금요일로 설정
         nextFriday.setHours(19, 0, 0, 0);
+
         const mapList = [
           "영원의 전쟁터", "용의 둥지", "하늘 사원",
           "브락시스 항전", "파멸의 탑", "볼스카야 공장",
@@ -92,96 +118,103 @@
         ];
         const newMap = mapList[Math.floor(Math.random() * mapList.length)];
 
-        await set(ref(db, "tournament"), {
+        tournamentData = {
           startTime: nextFriday.toISOString(),
           status: "open",
-          participants: [],
+          participants: [], // 참가자 리스트 초기화
           map: newMap,
-          teams: null,
-          matches: null
-        });
-        return {
-          startTime: nextFriday,
-          map: newMap,
-          teams: null,
-          matches: null,
-          participants: [],
-          status: "open"
+          teams: null, // 팀 정보 초기화
+          matches: null // 매칭 정보 초기화
         };
+
+        await set(ref(db, "tournament"), tournamentData);
+      } else {
+        tournamentData = data;  // 기존 토너먼트 데이터 로드
       }
-      return data;
     }
 
-    const tournament = await ensureUpcomingTournament();
-    const startTime = new Date(tournament.startTime);
-    const now = new Date();
-    const diffHours = Math.floor((startTime - now) / (1000 * 60 * 60));
-    const diffMinutes = Math.floor((startTime - now) % (1000 * 60 * 60) / (1000 * 60));
+    // 토너먼트 정보 표시
+    function displayTournamentInfo() {
+      const startTime = new Date(tournamentData.startTime);
+      const now = new Date();
+      const diffMs = startTime - now;
+      const remaining = `${Math.floor(diffMs / (1000 * 60 * 60 * 24))}일 ${Math.floor(diffMs / (1000 * 60 * 60)) % 24}시간 ${(Math.floor(diffMs / (1000 * 60)) % 60)}분 ${(Math.floor(diffMs / 1000) % 60)}초`;
 
-    if (!tournament.teams) {
-      bracket.innerHTML = `
-        <p class="map-info">⏰ 다음 토너먼트: <strong style="color:#7bffb4;">${startTime.toLocaleString()}</strong></p>
-        <p class="map-info">📍 맵: <strong style="color:skyblue;">"${tournament.map}"</strong></p>
-        <p class="map-info">👥 현재 신청 인원: ${tournament.participants?.length || 0}/20</p>
-        <p><button onclick="window.location.href='index.html'">🔙 메인으로 돌아가기</button></p>
+      tournamentInfo.innerHTML = `
+        <p>📍 토너먼트 맵: <strong>${tournamentData.map}</strong></p>
+        <p>⏰ 시작까지 남은 시간: <strong>${remaining}</strong></p>
+        <p>👥 현재 참가자 수: <strong>${tournamentData.participants.length}</strong>/20</p>
       `;
-    } else {
-      const teams = tournament.teams;
-      const matches = tournament.matches || {};
-      const usersSnap = await get(ref(db, "users"));
-      const users = usersSnap.val() || {};
+    }
 
-      const teamLeaders = {};
-      for (const teamKey of Object.keys(teams)) {
-        const teamMembers = teams[teamKey];
-        let topUser = teamMembers[0];
-        let topScore = users[topUser]?.points || 0;
-        for (const user of teamMembers) {
-          const score = users[user]?.points || 0;
-          if (score > topScore) {
-            topUser = user;
-            topScore = score;
-          }
-        }
-        teamLeaders[teamKey] = topUser;
+    // 참가 신청
+    async function registerForTournament() {
+      if (tournamentData.status !== "open") {
+        alert("현재 토너먼트는 진행 중이거나 종료되었습니다.");
+        return;
       }
 
-      const renderMatch = (matchKey, team1, team2) => {
-        const winner = matches[matchKey]?.winner || "";
-        const leader1 = teamLeaders[team1];
-        const leader2 = teamLeaders[team2];
+      if (tournamentData.participants.includes(currentUser)) {
+        alert("이미 참가한 토너먼트입니다.");
+        return;
+      }
 
-        return `
+      tournamentData.participants.push(currentUser);
+      await update(ref(db, "tournament"), { participants: tournamentData.participants });
+      alert("토너먼트에 참가 신청되었습니다!");
+      displayTournamentInfo();
+    }
+
+    // 토너먼트 대진표 출력
+    function renderBracket() {
+      if (!tournamentData.teams) return;
+
+      const teams = tournamentData.teams;
+      const matches = tournamentData.matches;
+
+      bracket.innerHTML = `
+        <h3>🎮 토너먼트 대진표</h3>
+        <p>🌍 맵: ${tournamentData.map}</p>
+      `;
+
+      Object.keys(matches).forEach(matchKey => {
+        const match = matches[matchKey];
+        const teamA = teams[match.team1];
+        const teamB = teams[match.team2];
+        const winner = match.winner ? `✅ 승리팀: ${match.winner}` : "❓ 승리팀 미선택";
+
+        const matchHTML = `
           <div class="match">
-            <p><strong>${team1}팀</strong>: ${teams[team1].join(", ")}</p>
-            <p><strong>${team2}팀</strong>: ${teams[team2].join(", ")}</p>
-            <p>${winner ? `✅ <strong>${winner}팀 승리</strong>` : "❓ 승리팀 선택 대기 중"}</p>
-            <button class="winner-button" onclick="reportResult('${matchKey}', '${team1}')" 
-              ${currentUser !== leader1 || winner ? "disabled class='disabled'" : ""}>
-              ${team1}팀 승리
-            </button>
-            <button class="winner-button" onclick="reportResult('${matchKey}', '${team2}')" 
-              ${currentUser !== leader2 || winner ? "disabled class='disabled'" : ""}>
-              ${team2}팀 승리
-            </button>
+            <p><strong>${teamA.join(", ")}</strong> vs <strong>${teamB.join(", ")}</strong></p>
+            <p>${winner}</p>
+            <button class="winner-button" onclick="reportWinner('${matchKey}', '${match.team1}')">승리: ${teamA.join(", ")}</button>
+            <button class="winner-button" onclick="reportWinner('${matchKey}', '${match.team2}')">승리: ${teamB.join(", ")}</button>
           </div>
         `;
-      };
 
-      bracket.innerHTML = `
-        <p class="map-info">📍 이번 토너먼트는 <strong style="color:skyblue;">"${tournament.map}"</strong> 맵으로 진행됩니다.</p>
-        ${renderMatch("semiFinal1", "A", "B")}
-        ${renderMatch("semiFinal2", "C", "D")}
-      `;
+        bracket.innerHTML += matchHTML;
+      });
     }
 
-    // 결과 보고
-    window.reportResult = async (matchKey, winnerTeam) => {
-      if (!confirm(`${winnerTeam}팀의 승리를 입력하시겠습니까?`)) return;
-      await update(ref(db, `tournament/matches/${matchKey}`), { winner: winnerTeam });
-      alert(`${winnerTeam}팀 승리가 기록되었습니다.`);
-      location.reload();
-    };
+    // 승리 팀 보고
+    async function reportWinner(matchKey, winningTeam) {
+      if (!confirm(`${winningTeam} 팀이 승리 팀으로 확정되면 토너먼트가 종료됩니다. 계속하시겠습니까?`)) return;
+
+      await update(ref(db, `tournament/matches/${matchKey}`), { winner: winningTeam });
+      alert(`${winningTeam} 팀 승리로 기록되었습니다.`);
+      renderBracket();
+    }
+
+    // 토너먼트 참가 버튼 클릭 시
+    document.getElementById("registerBtn").addEventListener("click", async () => {
+      await registerForTournament();
+    });
+
+    // 토너먼트 대진표와 정보를 로드
+    initializeTournament().then(() => {
+      displayTournamentInfo();
+      renderBracket();
+    });
   </script>
 </body>
 </html>

@@ -17,22 +17,13 @@
       text-align: center;
       overflow-x: hidden;
     }
-
     @keyframes bgMove {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-
-    .logo {
-      margin: 40px auto 20px;
-    }
-
-    .logo img {
-      width: 180px;
-      filter: drop-shadow(0 0 10px #00eaff);
-    }
-
+    .logo { margin: 40px auto 20px; }
+    .logo img { width: 180px; filter: drop-shadow(0 0 10px #00eaff); }
     .box {
       background: #111;
       border: 2px solid #7b2ff7;
@@ -43,14 +34,12 @@
       margin: 30px auto;
       padding: 30px 20px;
     }
-
     .section-title {
       font-size: 1.5rem;
       color: #7b2ff7;
       margin-bottom: 10px;
       text-shadow: 0 0 8px #7b2ff7;
     }
-
     button {
       padding: 12px 24px;
       margin: 10px;
@@ -64,30 +53,13 @@
       box-shadow: 0 0 10px rgba(0, 242, 255, 0.4);
       transition: 0.2s;
     }
-
-    button:hover {
-      transform: scale(1.05);
-      opacity: 0.95;
-    }
-
-    input[type="text"], textarea {
-      width: 90%;
-      background: #000;
-      color: #00f2ff;
-      border: 1px solid #7b2ff7;
-      padding: 10px;
-      border-radius: 8px;
-      font-family: 'Orbitron', sans-serif;
-      margin-top: 10px;
-    }
-
+    button:hover { transform: scale(1.05); opacity: 0.95; }
     ul {
       list-style: none;
       padding: 0;
       text-align: left;
       margin-top: 10px;
     }
-
     ul li {
       background: #1e1e1e;
       padding: 10px;
@@ -102,13 +74,14 @@
     <img src="horst-logo.png" alt="HORST 로고">
   </div>
 
+  <!-- 환영 인사 & 이용 기간 -->
   <div class="box" id="welcomeBox"></div>
-
   <div class="box">
     <div class="section-title">💳 이용 기간</div>
     <p id="billingInfo">이용 기간 로딩 중...</p>
   </div>
 
+  <!-- 메뉴 -->
   <div class="box">
     <div class="section-title">메뉴</div>
     <button onclick="location.href='result.html'">📊 경기 결과 입력</button>
@@ -118,11 +91,19 @@
     <button onclick="logout()">🚪 로그아웃</button>
   </div>
 
+  <!-- 토너먼트 -->
   <div class="box">
     <div class="section-title">🏅 토너먼트</div>
     <div id="tournamentInfo">토너먼트 정보를 불러오는 중...</div>
+    <p id="tournamentTime"></p>
+    <div id="mapDisplay"></div>
+    <p id="queueStatus"></p>
+    <button id="joinTournamentBtn">⚔️ 토너먼트 참가</button>
+    <button id="cancelTournamentBtn">❌ 토너먼트 취소</button>
+    <div id="participantList"></div>
   </div>
 
+  <!-- 실시간 매칭 -->
   <div class="box">
     <div class="section-title">🔍 실시간 매칭</div>
     <p id="statusText">현재 대기 중...</p>
@@ -132,20 +113,101 @@
     <div id="matchResult" style="margin-top: 20px;"></div>
   </div>
 
+  <!-- 시즌 정보 & 공지사항 -->
   <div class="box">
     <div class="section-title">📅 시즌 정보</div>
     <p id="seasonInfo">시즌 정보 로딩 중...</p>
   </div>
-
   <div class="box">
     <div class="section-title">📢 공지사항</div>
     <ul id="noticeList"></ul>
   </div>
 
-  <!-- 🎵 매칭 완료 시 재생할 사운드 -->
+  <!-- 매칭 완료 사운드 -->
   <audio id="matchSound" src="videoplayback (3).m4a" preload="auto"></audio>
 
-  <!-- 🔌 스크립트 -->
+  <!-- 매칭 & 토너먼트 스크립트 -->
   <script type="module" src="main.js"></script>
+  <script type="module">
+    import { db } from './firebase.js';
+    import { ref, get, set, remove, onValue } from 'https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js';
+
+    // 로그인/로그아웃
+    const currentUser = sessionStorage.getItem('currentUser');
+    if (!currentUser) {
+      alert('로그인이 필요합니다.');
+      location.href = 'index.html';
+    }
+    function logout() {
+      sessionStorage.removeItem('currentUser');
+      location.href = 'index.html';
+    }
+    window.logout = logout;
+
+    // 자동 로그아웃: 페이지 닫기/새로고침 시 자동 로그아웃
+    window.addEventListener('beforeunload', () => {
+      sessionStorage.removeItem('currentUser');
+    });
+
+    // 토너먼트 UI 요소
+    const joinBtn = document.getElementById('joinTournamentBtn');
+    const cancelBtn = document.getElementById('cancelTournamentBtn');
+    const infoBox = document.getElementById('tournamentInfo');
+    const timeBox = document.getElementById('tournamentTime');
+    const mapBox = document.getElementById('mapDisplay');
+    const queueBox = document.getElementById('queueStatus');
+    const listBox = document.getElementById('participantList');
+
+    // 남은 시간 표시
+    function updateTournamentTime() {
+      const now = new Date();
+      const nextFriday = new Date();
+      nextFriday.setDate(now.getDate() + ((12 - now.getDay()) % 7));
+      nextFriday.setHours(19,0,0,0);
+      const diff = nextFriday - now;
+      if (diff <= 0) {
+        timeBox.innerText = '토너먼트 시작!';
+      } else {
+        const d = Math.floor(diff/86400000);
+        const h = Math.floor((diff%86400000)/3600000);
+        const m = Math.floor((diff%3600000)/60000);
+        const s = Math.floor((diff%60000)/1000);
+        timeBox.innerText = `시작까지: ${d}일 ${h}시간 ${m}분 ${s}초`;
+      }
+    }
+    updateTournamentTime();
+    setInterval(updateTournamentTime, 1000);
+
+    // 실시간 참가자 & 맵 & 버튼 상태
+    onValue(ref(db, 'tournament'), snap => {
+      const data = snap.val() || {};
+      // 참가자
+      const parts = data.participants || {};
+      const cnt = Object.keys(parts).length;
+      infoBox.innerText = `현재 참가자: ${cnt}/20명`;
+      listBox.innerHTML = '<ul>' + Object.values(parts).map(p=>`<li>${p.name}</li>`).join('') + '</ul>';
+      // 맵
+      mapBox.innerText = `선택된 맵: ${data.map || '맵 정보 없음'}`;
+      // 큐 상태
+      queueBox.innerText = `현재 대기 중: ${cnt}/20`;
+      // 버튼 활성화/비활성화
+      joinBtn.disabled   = !!parts[currentUser];
+      cancelBtn.disabled = !parts[currentUser];
+    });
+
+    // 참가/취소 처리
+    joinBtn.addEventListener('click', async () => {
+      const parts = (await get(ref(db, 'tournament/participants'))).val() || {};
+      if (parts[currentUser]) return;
+      await set(ref(db, `tournament/participants/${currentUser}`), { name: currentUser, joinedAt: Date.now() });
+    });
+    cancelBtn.addEventListener('click', async () => {
+      const parts = (await get(ref(db, 'tournament/participants'))).val() || {};
+      if (!parts[currentUser]) return;
+      await remove(ref(db, `tournament/participants/${currentUser}`));
+    });
+
+    // (실시간 매칭 로직은 main.js 에서 처리)
+  </script>
 </body>
 </html>

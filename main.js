@@ -1,185 +1,181 @@
 import { db } from "./firebase.js";
-import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import {
+  ref, get, set, remove, onValue
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
+// 로그인 체크
 const currentUser = localStorage.getItem("currentUser");
 if (!currentUser) {
   alert("로그인이 필요합니다.");
   location.href = "index.html";
 }
 
-const welcomeBox = document.getElementById("welcomeBox");
-const seasonInfoDiv = document.getElementById("seasonInfo");
-const noticeUl = document.getElementById("noticeList");
-const matchStatus = document.getElementById("statusText");
-const matchTimer = document.getElementById("timer");
-const matchResultBox = document.getElementById("matchResult");
-const billingInfo = document.getElementById("billingInfo");
-const tournamentInfo = document.getElementById("tournamentInfo");
+// — 토너먼트 설정 —
+const maxParticipants = 20;
+let tournamentStarted = false;
 
-const matchSound = new Audio("videoplayback (3).m4a");
+// 화면 요소
+const tournamentTime   = document.getElementById("tournamentTime");
+const mapDisplay       = document.getElementById("mapDisplay");
+const queueStatus      = document.getElementById("queueStatus");
+const participantList  = document.getElementById("participantList");
+const joinTournBtn     = document.getElementById("joinTournamentBtn");
+const cancelTournBtn   = document.getElementById("cancelTournamentBtn");
 
-const noticeList = JSON.parse(localStorage.getItem("notices") || "[]");
-function renderNotices() {
-  noticeUl.innerHTML = "";
-  noticeList.slice().reverse().forEach((notice) => {
-    const li = document.createElement("li");
-    li.innerHTML = `<div style="background:#222; padding:10px; border:1px solid gold; border-radius:6px;">📌 ${notice}</div>`;
-    noticeUl.appendChild(li);
+// 다음 금요일 19:00 계산
+function getNextFridayAt7PM() {
+  const now = new Date();
+  const daysUntilFri = (5 - now.getDay() + 7) % 7 || 7;
+  const next = new Date(now);
+  next.setDate(now.getDate() + daysUntilFri);
+  next.setHours(19,0,0,0);
+  return next;
+}
+
+// 남은 시간 표시
+function updateTournamentTimer() {
+  const now  = new Date();
+  const end  = getNextFridayAt7PM();
+  const diff = end - now;
+  if (diff <= 0) {
+    tournamentTime.innerText = "토너먼트 시작!";
+    return;
+  }
+  const days = Math.floor(diff / 86400000);
+  const hrs  = Math.floor((diff % 86400000)/3600000);
+  const min  = Math.floor((diff % 3600000)/60000);
+  const sec  = Math.floor((diff % 60000)/1000);
+  tournamentTime.innerText =
+    `다음 토너먼트까지: ${days}일 ${hrs}시간 ${min}분 ${sec}초`;
+}
+setInterval(updateTournamentTimer, 1000);
+updateTournamentTimer();
+
+// 토너먼트 상태 구독
+onValue(ref(db, "tournament"), snap => {
+  const data = snap.val() || {};
+  tournamentStarted = data.status === "ongoing";
+  mapDisplay.innerHTML = `<p><strong>맵:</strong> ${data.map||"정보 없음"}</p>`;
+  // 버튼 활성/비활성
+  joinTournBtn.disabled   = tournamentStarted;
+  cancelTournBtn.disabled = !tournamentStarted;
+});
+
+// 참가자 목록 구독
+onValue(ref(db, "tournament/participants"), snap => {
+  const pts = snap.val() || {};
+  const cnt = Object.keys(pts).length;
+  queueStatus.innerText = `현재 참가자: ${cnt}/${maxParticipants}`;
+  participantList.innerHTML =
+    "<ul>" + Object.values(pts)
+                   .map(u=>`<li>${u.name}</li>`)
+                   .join("") +
+    "</ul>";
+});
+
+// 참가 신청
+joinTournBtn.onclick = async () => {
+  const pts = (await get(ref(db, "tournament/participants"))).val()||{};
+  if (pts[currentUser]) return alert("이미 신청하셨습니다.");
+  if (Object.keys(pts).length >= maxParticipants)
+    return alert("정원 초과");
+  await set(ref(db, `tournament/participants/${currentUser}`), {
+    name: currentUser,
+    joinedAt: Date.now()
   });
-}
-renderNotices();
-
-const savedSeason = localStorage.getItem("seasonText") || "시즌 1 : 2025년 5월 1일 ~ 6월 30일";
-
-get(ref(db, `users/${currentUser}`)).then(snapshot => {
-  if (!snapshot.exists()) {
-    alert("사용자 정보를 찾을 수 없습니다.");
-    location.href = "index.html";
-    return;
-  }
-
-  const user = snapshot.val();
-  const clan = user.clan ? `[${user.clan}] ` : "";
-  welcomeBox.innerHTML = `<h2>안녕하세요, ${clan + currentUser}님!</h2>
-  <p>티어: ${user.tier || "없음"} / 점수: ${user.points || 0}</p>`;
-
-  const joinedAt = new Date(user.joinedAt);
-  const today = new Date();
-  const daysUsed = Math.floor((today - joinedAt) / (1000 * 60 * 60 * 24));
-  const daysLeft = 30 - daysUsed;
-
-  billingInfo.innerHTML =
-    daysLeft >= 0
-      ? `<span style="color:${daysLeft <= 5 ? 'orange' : 'lime'}">남은 이용 기간: ${daysLeft}일</span>`
-      : `<span style="color:red;">⛔ 이용 기간이 만료되었습니다. 연장 필요!</span>`;
-
-  if (user.role === "admin") {
-    seasonInfoDiv.innerHTML = `<textarea id="seasonInput" rows="2">${savedSeason}</textarea><br><button onclick="saveSeason()">저장</button>`;
-  } else {
-    seasonInfoDiv.innerHTML = `<p>${savedSeason}</p>`;
-  }
-});
-
-window.saveSeason = () => {
-  const newText = document.getElementById("seasonInput").value.trim();
-  if (!newText) return alert("내용을 입력하세요.");
-  localStorage.setItem("seasonText", newText);
-  alert("시즌 정보가 저장되었습니다.");
-  location.reload();
+  alert("참가 신청 완료!");
 };
 
-window.logout = () => {
-  localStorage.removeItem("currentUser");
-  alert("로그아웃 되었습니다.");
-  location.href = "index.html";
+// 참가 취소
+cancelTournBtn.onclick = async () => {
+  const pts = (await get(ref(db, "tournament/participants"))).val()||{};
+  if (!pts[currentUser]) return alert("신청 내역이 없습니다.");
+  await remove(ref(db, `tournament/participants/${currentUser}`));
+  alert("참가 취소 완료!");
 };
 
-let matchQueue = [];
-let matchTime = 0;
+// — 실시간 매칭 설정 —
+const statusText = document.getElementById("statusText");
+const timerBox   = document.getElementById("timer");
+const resultBox  = document.getElementById("matchResult");
+const matchSound = document.getElementById("matchSound");
+
+const maps = [
+  "영원의 전쟁터", "용의 둥지", "하늘 사원",
+  "브락시스 항전", "파멸의 탑", "볼스카야 공장",
+  "저주의 골짜기", "거미 여왕의 무덤"
+];
+
+let queue = [];
 let timerInterval = null;
-const userScores = JSON.parse(localStorage.getItem("userScores") || "{}");
-if (!(currentUser in userScores)) {
-  userScores[currentUser] = 1000;
-  localStorage.setItem("userScores", JSON.stringify(userScores));
-}
+let elapsed = 0;
 
-window.joinMatch = async () => {
-  if (localStorage.getItem("currentMatch")) {
-    alert("진행 중인 매치가 있습니다. 결과 입력 후 다시 시도하세요.");
-    return;
-  }
-
-  const snap = await get(ref(db, "matchQueue"));
-  matchQueue = snap.exists() ? snap.val() : [];
-  if (matchQueue.includes(currentUser)) return alert("이미 대기 중입니다.");
-  matchQueue.push(currentUser);
-  await set(ref(db, "matchQueue"), matchQueue);
-  localStorage.setItem("matchQueue", JSON.stringify(matchQueue));
-  if (!timerInterval) startTimer();
-};
-
-window.cancelMatch = async () => {
-  const snap = await get(ref(db, "matchQueue"));
-  let currentQueue = snap.exists() ? snap.val() : [];
-  currentQueue = currentQueue.filter(id => id !== currentUser);
-  await set(ref(db, "matchQueue"), currentQueue);
-  matchQueue = currentQueue;
-  localStorage.setItem("matchQueue", JSON.stringify(currentQueue));
-  clearTimer();
-};
-
-onValue(ref(db, "matchQueue"), (snap) => {
-  matchQueue = snap.exists() ? snap.val() : [];
+// 대기열 구독
+onValue(ref(db, "matchQueue"), snap => {
+  queue = snap.val()||[];
   updateMatchStatus();
+  if (queue.includes(currentUser)) startMatchTimer();
 });
 
+// 상태 렌더링
 function updateMatchStatus() {
-  matchStatus.innerText = `현재 ${matchQueue.length}/10명 대기 중...`;
-
-  if (matchQueue.length >= 10) {
-    clearTimer();
-    const players = matchQueue.slice(0, 10);
-    const mapList = [
-      "영원의 전쟁터", "용의 둥지", "하늘 사원",
-      "브락시스 항전", "파멸의 탑", "볼스카야 공장",
-      "저주의 골짜기", "거미 여왕의 무덤"
-    ];
-    const map = mapList[Math.floor(Math.random() * mapList.length)];
-    const teams = createBalancedTeams(players);
-
-    const matchData = {
+  statusText.innerText = `현재 ${queue.length}/10명 대기 중...`;
+  if (queue.length >= 10) {
+    clearInterval(timerInterval);
+    const players = queue.slice(0,10);
+    const map     = maps[Math.floor(Math.random()*maps.length)];
+    // 균등 편성
+    const scored = players.map(n=>({name:n,score:1000}))
+                          .sort((a,b)=>b.score-a.score);
+    const teamA=[], teamB=[]; let sumA=0, sumB=0;
+    scored.forEach(p=>{
+      if (sumA <= sumB) { teamA.push(p.name); sumA+=p.score; }
+      else              { teamB.push(p.name); sumB+=p.score; }
+    });
+    // 결과 저장 및 화면 표시
+    set(ref(db,"matchQueue"), queue.slice(10));
+    set(ref(db,"currentMatch"), {
       id: `match-${Date.now()}`,
-      teamA: teams.teamA,
-      teamB: teams.teamB,
-      map,
+      teamA, teamB, map,
       timestamp: new Date().toISOString()
-    };
-
-    matchQueue = matchQueue.slice(10);
-    set(ref(db, "matchQueue"), matchQueue);
-    localStorage.setItem("currentMatch", JSON.stringify(matchData));
+    });
     matchSound.play();
-
-    matchResultBox.innerHTML = `
+    resultBox.innerHTML = `
       <h3>🎮 매칭 완료!</h3>
       <p><strong>맵:</strong> ${map}</p>
-      <p><strong>팀 A:</strong> ${teams.teamA.join(", ")}</p>
-      <p><strong>팀 B:</strong> ${teams.teamB.join(", ")}</p>
+      <p><strong>팀 A:</strong> ${teamA.join(", ")}</p>
+      <p><strong>팀 B:</strong> ${teamB.join(", ")}</p>
     `;
-    matchStatus.innerText = "3초 후 결과 입력 화면으로 이동합니다...";
-    setTimeout(() => location.href = "result.html", 3000);
+    statusText.innerText = "3초 후 결과 입력 화면으로 이동합니다...";
+    setTimeout(()=> location.href="result.html", 3000);
   }
 }
 
-function startTimer() {
-  matchTime = 0;
-  matchTimer.innerText = `경과 시간: ${matchTime}초`;
-  timerInterval = setInterval(() => {
-    matchTime++;
-    matchTimer.innerText = `경과 시간: ${matchTime}초`;
-  }, 1000);
-}
-
-function clearTimer() {
+// 참가 / 취소
+window.joinMatch = () => {
+  if (queue.includes(currentUser)) return alert("이미 대기 중입니다.");
+  queue.push(currentUser);
+  set(ref(db,"matchQueue"), queue);
+  updateMatchStatus();
+  startMatchTimer();
+};
+window.cancelMatch = () => {
+  if (!queue.includes(currentUser)) return alert("대기 중이 아닙니다.");
+  queue = queue.filter(u=>u!==currentUser);
+  set(ref(db,"matchQueue"), queue);
   clearInterval(timerInterval);
-  timerInterval = null;
-  matchTimer.innerText = "";
-}
+  timerBox.innerText = "경과 시간: 0초";
+  updateMatchStatus();
+};
 
-function createBalancedTeams(players) {
-  const scored = players.map(name => ({
-    name,
-    score: userScores[name] || 1000
-  })).sort((a, b) => b.score - a.score);
-
-  const teamA = [], teamB = [];
-  let scoreA = 0, scoreB = 0;
-  for (const p of scored) {
-    if (scoreA <= scoreB) {
-      teamA.push(p.name); scoreA += p.score;
-    } else {
-      teamB.push(p.name); scoreB += p.score;
-    }
-  }
-  return { teamA, teamB };
+// 타이머
+function startMatchTimer(){
+  if (timerInterval) return;
+  elapsed = 0;
+  timerBox.innerText = `경과 시간: 0초`;
+  timerInterval = setInterval(()=>{
+    elapsed++;
+    timerBox.innerText = `경과 시간: ${elapsed}초`;
+    updateMatchStatus();
+  },1000);
 }

@@ -70,7 +70,7 @@ async function login() {
     }
 
     // ✅ 로그인 완료
-    localStorage.setItem("currentUser", id);
+    sessionStorage.setItem("currentUser", id);
     alert("🎉 로그인 성공!");
     location.href = user.role === "admin" ? "admin.html" : "main.html";
 
