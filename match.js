@@ -1,6 +1,12 @@
-// match.js - 실시간 매칭 담당 스크립트 (localStorage 기반)
+import { db } from "./firebase.js"; // Firebase 연동이 필요한 경우 대비
+// 현재는 localStorage 기반으로 동작
 
 const currentUser = localStorage.getItem("currentUser");
+if (!currentUser) {
+  alert("로그인이 필요합니다.");
+  location.href = "index.html";
+}
+
 const userScores = JSON.parse(localStorage.getItem("userScores") || "{}");
 let queue = JSON.parse(localStorage.getItem("matchQueue") || "[]");
 let timerInterval = null;
@@ -11,10 +17,16 @@ const maps = [
   "브락시스 항전", "파멸의 탑", "볼스카야 공장", "저주의 골짜기", "거미 여왕의 무덤"
 ];
 
-document.addEventListener("DOMContentLoaded", () => {
-  updateStatus();
-  if (queue.includes(currentUser)) startTimer(); // 자동 대기 상태 복구
-});
+// DOM 요소 초기 접근
+const statusText = document.getElementById("statusText");
+const timerBox = document.getElementById("timer");
+const resultBox = document.getElementById("matchResult");
+
+// 페이지 진입 시 상태 초기화
+updateStatus();
+if (queue.includes(currentUser)) {
+  startTimer();
+}
 
 window.joinMatch = () => {
   if (!currentUser) return alert("로그인이 필요합니다.");
@@ -24,14 +36,11 @@ window.joinMatch = () => {
   queue.push(currentUser);
   localStorage.setItem("matchQueue", JSON.stringify(queue));
   updateStatus();
-  if (!timerInterval) startTimer();
+  startTimer();
 };
 
 function updateStatus() {
-  const statusText = document.getElementById("statusText");
-  const resultBox = document.getElementById("matchResult");
-
-  statusText.innerText = `현재 ${queue.length}/10명 대기 중...`;
+  if (statusText) statusText.innerText = `현재 ${queue.length}/10명 대기 중...`;
 
   if (queue.length >= 10) {
     clearInterval(timerInterval);
@@ -66,8 +75,9 @@ function updateStatus() {
 }
 
 function startTimer() {
+  if (timerInterval) return; // 중복 방지
   elapsedSeconds = 0;
-  const timerBox = document.getElementById("timer");
+
   if (timerBox) timerBox.innerText = `경과 시간: 0초`;
 
   timerInterval = setInterval(() => {
@@ -98,9 +108,7 @@ function createBalancedTeams(players) {
 }
 
 function showMatchResult(match) {
-  const resultBox = document.getElementById("matchResult");
   if (!resultBox) return;
-
   resultBox.innerHTML = `
     <h3>🎮 매칭 완료!</h3>
     <p><strong>맵:</strong> ${match.map}</p>
@@ -115,7 +123,7 @@ function saveMatch(matchData) {
   localStorage.setItem("matchHistory", JSON.stringify(matchHistory));
 }
 
-// 초기 점수 없을 경우 설정
+// 초기 점수 없을 경우 기본값 설정
 if (!(currentUser in userScores)) {
   userScores[currentUser] = 1000;
   localStorage.setItem("userScores", JSON.stringify(userScores));
