@@ -1,68 +1,131 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <title>HORST 전적 보기</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
-      background-color: black;
-      color: gold;
-      font-family: sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #000010, #080031, #000010);
+      background-size: 400% 400%;
+      animation: bgMove 15s ease infinite;
+      font-family: 'Orbitron', sans-serif;
+      color: #e3e3e3;
       text-align: center;
     }
+    @keyframes bgMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
     h1 {
-      margin-top: 30px;
+      margin: 40px 0 20px;
+      font-size: 2rem;
+      text-shadow: 0 0 8px #7b2ff7;
     }
     table {
-      margin: 30px auto;
+      margin: 0 auto 60px;
       width: 90%;
+      max-width: 1200px;
       border-collapse: collapse;
+      box-shadow: 0 0 20px rgba(123,47,247,0.4);
+      background: rgba(17,17,17,0.8);
+      border-radius: 10px;
+      overflow: hidden;
     }
-    th, td {
-      border: 1px solid gold;
-      padding: 10px;
+    thead th {
+      padding: 16px;
+      background: #111;
+      color: #00f2ff;
+      font-size: 1.125rem;
+      text-shadow: 0 0 6px #00f2ff;
+      border-bottom: 2px solid #7b2ff7;
     }
-    th {
-      background-color: #222;
+    tbody td {
+      padding: 14px;
+      font-size: 1rem;
+      border-bottom: 1px solid #444;
     }
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+    tbody tr:hover td {
+      background: rgba(123,47,247,0.2);
+    }
+    td:nth-child(1) { width: 20%; }
+    td:nth-child(2) { width: 30%; }
+    td:nth-child(3), td:nth-child(4) { width: 25%; }
   </style>
 </head>
 <body>
-
   <h1>📜 내 매칭 전적</h1>
   <table>
     <thead>
       <tr>
         <th>날짜</th>
-        <th>팀 A</th>
-        <th>팀 B</th>
+        <th>맵</th>
+        <th>내 결과</th>
+        <th>상대 결과</th>
       </tr>
     </thead>
-    <tbody id="historyBody"></tbody>
+    <tbody id="historyBody">
+      <tr><td colspan="4">로딩 중…</td></tr>
+    </tbody>
   </table>
 
-  <script>
-    const currentUser = localStorage.getItem("currentUser");
-    const history = JSON.parse(localStorage.getItem("matchHistory") || "[]");
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    // Firebase 설정
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      databaseURL: "YOUR_DATABASE_URL",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db  = getDatabase(app);
+
+    const currentUser = sessionStorage.getItem("currentUser");
     const tbody = document.getElementById("historyBody");
+    const matchesRef = ref(db, "matchResults");
 
-    const myMatches = history.filter(match =>
-      [...match.teamA, ...match.teamB].includes(currentUser)
-    );
+    onValue(matchesRef, snapshot => {
+      const all = snapshot.val() || {};
+      const rows = [];
 
-    if (myMatches.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="3">참여한 매치가 없습니다.</td></tr>`;
-    } else {
-      myMatches.reverse().forEach(match => {
-        const row = document.createElement("tr");
-        row.innerHTML = `
-          <td>${new Date(match.timestamp).toLocaleString()}</td>
-          <td>${match.teamA.join(", ")}</td>
-          <td>${match.teamB.join(", ")}</td>
-        `;
-        tbody.appendChild(row);
+      Object.values(all).forEach(m => {
+        const { timestamp, map, teamA, resultA, teamB, resultB } = m;
+        if ([...teamA, ...teamB].includes(currentUser)) {
+          const myInA = teamA.includes(currentUser);
+          const myResult = myInA ? resultA : resultB;
+          const oppResult = myResult === "win" ? "lose" : "win";
+          rows.push({ timestamp, map, myResult, oppResult });
+        }
       });
-    }
+
+      tbody.innerHTML = "";
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4">참여한 매치가 없습니다.</td></tr>`;
+      } else {
+        rows.sort((a,b) => b.timestamp - a.timestamp);
+        rows.forEach(r => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${new Date(r.timestamp).toLocaleString()}</td>
+            <td>${r.map}</td>
+            <td>${r.myResult}</td>
+            <td>${r.oppResult}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+    });
   </script>
 </body>
 </html>
