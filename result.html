@@ -1,3 +1,4 @@
+<!-- result.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -22,22 +23,23 @@
     }
     .container {
       position: relative;
-      max-width: 1000px;
-      margin: 80px auto;
-      padding: 40px;
+      max-width: 1200px;       /* 더 넓게 */
+      margin: 60px auto;
+      padding: 50px;
       background: rgba(17,17,17,0.95);
       border: 2px solid #7b2ff7;
       border-radius: 15px;
-      box-shadow: 0 0 25px rgba(123,47,247,0.4);
+      box-shadow: 0 0 30px rgba(123,47,247,0.4);
+      font-size: 1.125rem;      /* 기본 글씨 크게 */
     }
     .match-box {
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      gap: 20px;
+      gap: 30px;
     }
     .team {
-      width: 40%;
+      width: 45%;
       text-align: left;
     }
     ul { list-style: none; padding: 0; margin: 0; }
@@ -45,27 +47,27 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 10px;
-      margin: 8px 0;
+      padding: 12px;
+      margin: 10px 0;
       background: #1b1b1b;
       border: 1px solid #00f2ff;
-      border-radius: 6px;
-      font-size: 18px;
+      border-radius: 8px;
+      font-size: 1rem;
     }
     .map-center {
       position: absolute;
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      font-size: 32px;
+      font-size: 1.75rem;
       font-weight: bold;
       color: gold;
-      text-shadow: 0 0 10px #ffd700;
+      text-shadow: 0 0 12px #ffd700;
     }
     select {
-      margin-left: 10px;
-      padding: 6px;
-      font-size: 16px;
+      margin-left: 12px;
+      padding: 8px;
+      font-size: 1rem;
       border-radius: 4px;
       border: 1px solid #7b2ff7;
       background: #000;
@@ -73,29 +75,41 @@
     }
     button {
       margin-top: 30px;
-      padding: 14px 28px;
-      font-size: 18px;
+      padding: 16px 32px;
+      font-size: 1.125rem;
       border: none;
       border-radius: 8px;
       background: linear-gradient(90deg, #00f2ff, #7b2ff7);
       color: black;
       font-weight: bold;
       cursor: pointer;
-      box-shadow: 0 0 10px rgba(0,242,255,0.3);
+      box-shadow: 0 0 12px rgba(0,242,255,0.3);
       transition: transform 0.2s;
     }
     button:hover { transform: scale(1.05); }
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      margin-top: 20px;
+      padding: 12px;
+      font-size: 1rem;
+      border-radius: 6px;
+      border: 1px solid #7b2ff7;
+      background: #111;
+      color: #e3e3e3;
+      resize: vertical;
+    }
     /* Score glow classes */
     .high-glow { animation: glow-high 1.5s ease-in-out infinite; }
     .mid-upper-glow { animation: glow-mid-upper 1.5s ease-in-out infinite; }
     .middle-glow { animation: glow-middle 1.5s ease-in-out infinite; }
     .lower-glow { animation: glow-lower 1.5s ease-in-out infinite; }
     .default-glow { animation: glow-default 1.5s ease-in-out infinite; }
-    @keyframes glow-high { 0%,100% { text-shadow: 0 0 10px #ffd700; } 50% { text-shadow: 0 0 20px #ffec00; } }
-    @keyframes glow-mid-upper { 0%,100% { text-shadow: 0 0 10px #ffa500; } 50% { text-shadow: 0 0 20px #ffb830; } }
-    @keyframes glow-middle { 0%,100% { text-shadow: 0 0 10px #00bfff; } 50% { text-shadow: 0 0 20px #00d4ff; } }
-    @keyframes glow-lower { 0%,100% { text-shadow: 0 0 10px #ff69b4; } 50% { text-shadow: 0 0 20px #ff85c1; } }
-    @keyframes glow-default { 0%,100% { text-shadow: 0 0 10px #888; } 50% { text-shadow: 0 0 20px #aaa; } }
+    @keyframes glow-high { 0%,100% { text-shadow: 0 0 12px #ffd700; } 50% { text-shadow: 0 0 24px #ffec00; } }
+    @keyframes glow-mid-upper { 0%,100% { text-shadow: 0 0 12px #ffa500; } 50% { text-shadow: 0 0 24px #ffb830; } }
+    @keyframes glow-middle { 0%,100% { text-shadow: 0 0 12px #00bfff; } 50% { text-shadow: 0 0 24px #00d4ff; } }
+    @keyframes glow-lower { 0%,100% { text-shadow: 0 0 12px #ff69b4; } 50% { text-shadow: 0 0 24px #ff85c1; } }
+    @keyframes glow-default { 0%,100% { text-shadow: 0 0 12px #888; } 50% { text-shadow: 0 0 24px #aaa; } }
   </style>
 </head>
 <body>
@@ -105,6 +119,12 @@
       <div class="map-center" id="mapCenter"></div>
       <div class="team" id="teamB"></div>
     </div>
+    <!-- 팀장 승패 선택 후 결과 저장 버튼 -->
+    <button id="submitResultBtn">결과 제출</button>
+
+    <!-- 이의제기 섹션: 누구나 사용 가능 -->
+    <textarea id="appealText" placeholder="이의제기 내용을 입력하세요..."></textarea>
+    <button id="appealBtn">이의제기 제출</button>
   </div>
 
   <!-- 매칭 완료 사운드 -->
