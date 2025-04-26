@@ -10,7 +10,7 @@ get(ref(db, `users/${currentUser}`)).then(snap => {
   } else {
     renderUserList();
     renderBlockedUsers();
-    renderPendingUsers();  // 추가된 부분: 가입 대기자 목록 렌더링
+    renderPendingUsers();
     renderNotices();
     renderDisputes();
   }
@@ -21,7 +21,6 @@ function renderBlockedUsers() {
   const ul = document.getElementById("blockedUsers");
   ul.innerHTML = "";
 
-  // 차단된 유저만 가져오기
   const blockedUsersQuery = query(ref(db, "users"), orderByChild("isBlocked"), equalTo(true));
   get(blockedUsersQuery).then(snap => {
     if (!snap.exists()) return;
@@ -45,7 +44,7 @@ window.unblockUser = async (uid) => {
   renderUserList();
 };
 
-// ✅ 유저 차단 (삭제 대신 플래그)
+// ✅ 유저 차단
 window.banUser = async (uid) => {
   if (!confirm(`${uid} 님을 차단하시겠습니까?`)) return;
   await update(ref(db, `users/${uid}`), { isBlocked: true });
@@ -62,7 +61,6 @@ window.renderUserList = () => {
   const listEl = document.getElementById("userList");
   const keyword = document.getElementById("searchUser")?.value?.toLowerCase() || "";
 
-  // 검색어로 유저 리스트 필터링 (차단된 유저 제외)
   const usersQuery = query(ref(db, "users"), orderByChild("uid"));
   get(usersQuery).then((snap) => {
     if (!snap.exists()) return;
@@ -109,23 +107,24 @@ function renderPagination(totalPages) {
   container.appendChild(nav);
 }
 
-// ✅ 가입 대기자 목록 (추가된 부분)
+// ✅ 가입 대기자 목록 (수정된 부분)
 function renderPendingUsers() {
   const ul = document.getElementById("pendingUsers");
   ul.innerHTML = "";
 
-  const pendingUsersQuery = query(ref(db, "users"), orderByChild("status"), equalTo("pending"));
-  get(pendingUsersQuery).then(snap => {
+  get(ref(db, "users")).then(snap => {
     if (!snap.exists()) return;
     const users = snap.val();
     Object.entries(users).forEach(([uid, user]) => {
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <span>${uid} (${user.status})</span>
-        <button onclick="approveUser('${uid}')">승인</button>
-        <button onclick="rejectUser('${uid}')">거절</button>
-      `;
-      ul.appendChild(li);
+      if (user.status === "pending") {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span>${uid} (${user.status})</span>
+          <button onclick="approveUser('${uid}')">승인</button>
+          <button onclick="rejectUser('${uid}')">거절</button>
+        `;
+        ul.appendChild(li);
+      }
     });
   });
 }
@@ -134,14 +133,14 @@ function renderPendingUsers() {
 window.approveUser = async (uid) => {
   await update(ref(db, `users/${uid}`), { status: "approved" });
   alert(`${uid}님이 승인되었습니다.`);
-  renderPendingUsers();  // 승인 후 대기자 목록 갱신
+  renderPendingUsers();
 };
 
 // ✅ 가입 거절
 window.rejectUser = async (uid) => {
   await update(ref(db, `users/${uid}`), { status: "rejected" });
   alert(`${uid}님이 거절되었습니다.`);
-  renderPendingUsers();  // 거절 후 대기자 목록 갱신
+  renderPendingUsers();
 };
 
 // ✅ 공지사항 관리
