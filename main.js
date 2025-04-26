@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { ref, get, set, update, onValue, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // 로그인 체크
 const currentUser = localStorage.getItem("currentUser");
@@ -35,7 +35,6 @@ renderNotices();
 // 시즌 정보
 const savedSeason = localStorage.getItem("seasonText") || "시즌 1 : 2025년 5월 1일 ~ 6월 30일";
 
-// 사용자 정보 표시
 get(ref(db, `users/${currentUser}`)).then(snapshot => {
   if (!snapshot.exists()) {
     alert("사용자 정보를 찾을 수 없습니다.");
@@ -93,7 +92,8 @@ if (!(currentUser in userScores)) {
 }
 
 window.joinMatch = async () => {
-  if (localStorage.getItem("currentMatch")) {
+  const matchSnap = await get(ref(db, "currentMatch"));
+  if (matchSnap.exists()) {
     alert("진행 중인 매치가 있습니다. 결과 입력 후 다시 시도하세요.");
     return;
   }
@@ -103,7 +103,6 @@ window.joinMatch = async () => {
   if (matchQueue.includes(currentUser)) return alert("이미 대기 중입니다.");
   matchQueue.push(currentUser);
   await set(ref(db, "matchQueue"), matchQueue);
-  localStorage.setItem("matchQueue", JSON.stringify(matchQueue));
   clearTimer();
   startTimer();
 };
@@ -114,7 +113,6 @@ window.cancelMatch = async () => {
   currentQueue = currentQueue.filter(id => id !== currentUser);
   await set(ref(db, "matchQueue"), currentQueue);
   matchQueue = currentQueue;
-  localStorage.setItem("matchQueue", JSON.stringify(currentQueue));
   clearTimer();
 };
 
@@ -145,11 +143,11 @@ function updateMatchStatus() {
       timestamp: new Date().toISOString()
     };
 
+    set(ref(db, "currentMatch"), matchData); // ⭐ 파이어베이스에 저장
     matchQueue = matchQueue.slice(10);
     set(ref(db, "matchQueue"), matchQueue);
-    localStorage.setItem("currentMatch", JSON.stringify(matchData));
-    matchSound.play();
 
+    matchSound.play();
     matchResultBox.innerHTML = `
       <h3>🎮 매칭 완료!</h3>
       <p><strong>맵:</strong> ${map}</p>
@@ -198,4 +196,4 @@ function createBalancedTeams(players) {
   return { teamA, teamB };
 }
 
-// (이하 토너먼트 관련 코드는 그대로 유지)
+// (이하 토너먼트 관련 부분은 그대로 유지)

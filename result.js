@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { ref, get, set, update, onValue, push } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { ref, get, set, update, push, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // 로그인 체크
 const currentUser = localStorage.getItem("currentUser");
@@ -8,45 +8,32 @@ if (!currentUser) {
   location.href = "index.html";
 }
 
-// 매치 결과 저장 함수
-async function saveMatchResult(userId, team, result) {
-  const matchRef = push(ref(db, `history/${userId}`));
-  await set(matchRef, {
-    team: team,
-    result: result,
-    timestamp: Date.now()
-  });
-}
+// DOM 요소
+const resultForm = document.getElementById("resultForm");
+const mapCenter = document.getElementById("mapCenter");
+const teamABox = document.getElementById("teamA");
+const teamBBox = document.getElementById("teamB");
+const submitBtn = document.getElementById("submitResultBtn");
+const appealLink = document.getElementById("appealLink");
+const matchIdDisplay = document.getElementById("matchIdDisplay");
 
 // 변경 감지 플래그
 let isDirty = false;
-
-// DOM 요소
-const resultForm    = document.getElementById("resultForm");
-const mapCenter     = document.getElementById("mapCenter");
-const teamABox      = document.getElementById("teamA");
-const teamBBox      = document.getElementById("teamB");
-const submitBtn     = document.getElementById("submitResultBtn");
-const appealLink    = document.getElementById("appealLink");
-const matchIdDisplay = document.getElementById("matchIdDisplay");
-
-// 변경(change) 이벤트 감지
-document.addEventListener("change", e => {
+document.addEventListener("change", (e) => {
   if (e.target.id === "resultA" || e.target.id === "resultB") {
     isDirty = true;
   }
 });
 
-// 페이지를 벗어나기 전 경고
-window.addEventListener("beforeunload", e => {
+// 페이지 벗어나기 전 경고
+window.addEventListener("beforeunload", (e) => {
   if (!isDirty) return;
   e.preventDefault();
   e.returnValue = "";
 });
 
-// 전체 유저 점수+랭킹 미리 불러오기
+// 유저 점수+랭킹 불러오기
 let rankingMap = {}; // { userId: { score, rank } }
-
 async function loadRanking() {
   const snap = await get(ref(db, "users"));
   if (!snap.exists()) return;
@@ -54,18 +41,19 @@ async function loadRanking() {
   const users = Object.entries(snap.val())
     .map(([id, data]) => ({
       id,
-      score: data.score || 0
+      score: data.score || 0,
     }))
     .sort((a, b) => b.score - a.score);
 
   users.forEach((user, index) => {
     rankingMap[user.id] = {
       score: user.score,
-      rank: index + 1
+      rank: index + 1,
     };
   });
 }
 
+// 글로우 효과
 function getGlowClass(score) {
   if (score >= 3000) return "high-glow";
   if (score >= 2600) return "mid-upper-glow";
@@ -75,6 +63,7 @@ function getGlowClass(score) {
   return "default-glow";
 }
 
+// 닉네임 표시
 function renderNickname(userId) {
   const info = rankingMap[userId];
   if (!info) return userId;
@@ -91,11 +80,23 @@ function renderNickname(userId) {
   return `<span class="${glowClass}">${userId} (${score}) ${stars}</span>`;
 }
 
+// 클랜 정보 가져오기
 async function fetchClan(userId) {
   const snap = await get(ref(db, `users/${userId}/clan`));
   return snap.exists() ? snap.val() : "미소속";
 }
 
+// 경기 결과 기록
+async function saveMatchResult(userId, team, result) {
+  const matchRef = push(ref(db, `history/${userId}`));
+  await set(matchRef, {
+    team: team,
+    result: result,
+    timestamp: Date.now(),
+  });
+}
+
+// 매칭 정보 불러오기
 async function loadAndRenderMatch() {
   await loadRanking();
 
@@ -104,6 +105,7 @@ async function loadAndRenderMatch() {
     resultForm.innerHTML = "<p>✨ 매칭 정보가 없습니다.</p>";
     return;
   }
+
   const { id, map, teamA, teamB } = snap.val();
 
   matchIdDisplay.textContent = `매칭 ID: ${id}`;
@@ -111,7 +113,7 @@ async function loadAndRenderMatch() {
 
   const captainA = teamA[0];
   const captainB = teamB[0];
-  const isCaptain = (currentUser === captainA || currentUser === captainB);
+  const isCaptain = currentUser === captainA || currentUser === captainB;
 
   async function makeTeamBox(players, container, fieldId, captain) {
     container.innerHTML = "";
@@ -156,9 +158,11 @@ async function loadAndRenderMatch() {
 
       await set(ref(db, `matchResults/${id}`), {
         map,
-        teamA, resultA: resA,
-        teamB, resultB: resB,
-        timestamp: new Date().toISOString()
+        teamA,
+        resultA: resA,
+        teamB,
+        resultB: resB,
+        timestamp: new Date().toISOString(),
       });
 
       const delta = 100;
@@ -167,17 +171,17 @@ async function loadAndRenderMatch() {
         const oldSnap = await get(ref(db, `users/${u}/score`));
         const oldScore = oldSnap.exists() ? oldSnap.val() : 1000;
         updates[`users/${u}/score`] = oldScore + (resA === "win" ? delta : -delta);
-
         await saveMatchResult(u, "A", resA);
       }
       for (let u of teamB) {
         const oldSnap = await get(ref(db, `users/${u}/score`));
         const oldScore = oldSnap.exists() ? oldSnap.val() : 1000;
         updates[`users/${u}/score`] = oldScore + (resB === "win" ? delta : -delta);
-
         await saveMatchResult(u, "B", resB);
       }
       await update(ref(db), updates);
+
+      await set(ref(db, "currentMatch"), null); // ✅ currentMatch 삭제
 
       isDirty = false;
       window.onbeforeunload = null;
@@ -191,7 +195,7 @@ async function loadAndRenderMatch() {
     isDirty = false;
   });
 
-  onValue(ref(db, `matchResults/${id}`), snapRes => {
+  onValue(ref(db, `matchResults/${id}`), (snapRes) => {
     if (snapRes.exists()) {
       isDirty = false;
       window.onbeforeunload = null;
