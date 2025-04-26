@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // 로그인 체크
 const currentUser = localStorage.getItem("currentUser");
@@ -87,18 +87,11 @@ let matchQueue = [];
 let matchTime = 0;
 let timerInterval = null;
 
-const userScores = JSON.parse(localStorage.getItem("userScores") || "{}");
-if (!(currentUser in userScores)) {
-  userScores[currentUser] = 1000;
-  localStorage.setItem("userScores", JSON.stringify(userScores));
-}
-
 window.joinMatch = async () => {
   const snap = await get(ref(db, "matchQueue"));
   const serverQueue = snap.exists() ? snap.val() : [];
 
-  const inCurrentMatch = serverQueue.includes(currentUser);
-  if (inCurrentMatch) {
+  if (serverQueue.includes(currentUser)) {
     alert("이미 대기 중입니다.");
     return;
   }
@@ -120,12 +113,12 @@ window.cancelMatch = async () => {
   clearTimer();
 };
 
-onValue(ref(db, "matchQueue"), (snap) => {
+onValue(ref(db, "matchQueue"), async (snap) => {
   matchQueue = snap.exists() ? snap.val() : [];
-  updateMatchStatus();
+  await updateMatchStatus();
 });
 
-function updateMatchStatus() {
+async function updateMatchStatus() {
   matchStatus.innerText = `현재 ${matchQueue.length}/10명 대기 중...`;
 
   if (matchQueue.length >= 10) {
@@ -148,10 +141,17 @@ function updateMatchStatus() {
     };
 
     matchQueue = matchQueue.slice(10);
-    set(ref(db, "matchQueue"), matchQueue);
-    localStorage.setItem("currentMatch", JSON.stringify(matchData));
-    matchSound.play();
+    if (!Array.isArray(matchQueue)) matchQueue = [];
 
+    try {
+      await set(ref(db, "matchQueue"), matchQueue);
+      await set(ref(db, "currentMatch"), matchData);
+      console.log("✅ 매칭 완료!");
+    } catch (error) {
+      console.error("❌ 매칭 실패:", error);
+    }
+
+    matchSound.play();
     matchResultBox.innerHTML = `
       <h3>🎮 매칭 완료!</h3>
       <p><strong>맵:</strong> ${map}</p>
@@ -184,7 +184,7 @@ function clearTimer() {
 function createBalancedTeams(players) {
   const scored = players.map(name => ({
     name,
-    score: userScores[name] || 1000
+    score: 1000
   })).sort((a, b) => b.score - a.score);
 
   const teamA = [];
@@ -203,8 +203,6 @@ function createBalancedTeams(players) {
 // ========================================
 // ✅ 토너먼트 관련
 // ========================================
-
-// 토너먼트 정보 실시간 표시
 onValue(ref(db, "tournament"), (snapshot) => {
   const data = snapshot.val();
   if (data) {
@@ -217,7 +215,6 @@ onValue(ref(db, "tournament"), (snapshot) => {
   }
 });
 
-// 토너먼트 참가자 수 실시간 표시
 onValue(ref(db, "tournament/participants"), (snap) => {
   const participants = snap.exists() ? snap.val() : {};
   const count = Object.keys(participants).length;
@@ -226,18 +223,17 @@ onValue(ref(db, "tournament/participants"), (snap) => {
   }
 });
 
-// 금요일 7시까지 남은 시간 표시
 function updateTournamentCountdown() {
   const timeBox = document.getElementById("tournamentTime");
   if (!timeBox) return;
 
   const now = new Date();
-  const day = now.getDay(); // 0(일)~6(토)
+  const day = now.getDay();
   const diffToFriday = (5 - day + 7) % 7 || 7;
 
   const target = new Date(now);
   target.setDate(now.getDate() + diffToFriday);
-  target.setHours(19, 0, 0, 0); // 오후 7시
+  target.setHours(19, 0, 0, 0);
 
   const diff = target - now;
   const d = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -248,6 +244,43 @@ function updateTournamentCountdown() {
   timeBox.innerText = `매주 금요일 19:00까지 남은 시간: ${d}일 ${h}시간 ${m}분 ${s}초`;
   timeBox.style.color = "#00ff88";
   timeBox.style.fontWeight = "bold";
+
+  // ✅ 토너먼트 참가
+window.joinTournament = async () => {
+  const snap = await get(ref(db, "tournament/participants"));
+  const participants = snap.exists() ? snap.val() : {};
+
+  if (participants[currentUser]) {
+    alert("이미 참가 신청하셨습니다.");
+    return;
+  }
+  if (Object.keys(participants).length >= 20) {
+    alert("정원이 초과되었습니다.");
+    return;
+  }
+
+  await set(ref(db, `tournament/participants/${currentUser}`), {
+    name: currentUser,
+    joinedAt: Date.now()
+  });
+
+  alert("✅ 토너먼트 참가 완료!");
+};
+
+// ✅ 토너먼트 참가 취소
+window.cancelTournament = async () => {
+  const snap = await get(ref(db, "tournament/participants"));
+  const participants = snap.exists() ? snap.val() : {};
+
+  if (!participants[currentUser]) {
+    alert("참가 내역이 없습니다.");
+    return;
+  }
+
+  await set(ref(db, `tournament/participants/${currentUser}`), null);
+
+  alert("✅ 토너먼트 참가 취소 완료!");
+};
 }
 setInterval(updateTournamentCountdown, 1000);
 updateTournamentCountdown();
