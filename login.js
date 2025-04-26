@@ -1,4 +1,3 @@
-// login.js
 import { getDatabase, ref, get, child, set, update } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js";
 import { db } from "./firebase.js";
 
@@ -28,7 +27,7 @@ async function login() {
     const user = snapshot.val();
 
     // 🚫 차단 확인
-    if (user.blocked) {
+    if (user.blocked || false) {
       errorBox.innerText = "차단된 유저입니다. 관리자에게 문의하세요.";
       return;
     }
@@ -59,10 +58,8 @@ async function login() {
     }
 
     // ✅ 가입 시점(joinedAt) 없으면 저장
-    if (!user.joinedAt) {
-      user.joinedAt = new Date().toISOString();
-      await set(ref(db, `users/${id}`), user);
-    }
+    user.joinedAt = user.joinedAt || new Date().toISOString();
+    await set(ref(db, `users/${id}`), user);
 
     // ⏳ 30일 유효기간 체크
     const joinedAt = new Date(user.joinedAt);
@@ -74,8 +71,8 @@ async function login() {
       return;
     }
 
-    // ✅ 로그인 완료 (sessionStorage로 변경)
-    sessionStorage.setItem("currentUser", id);
+    // ✅ 로그인 완료 (localStorage로 변경)
+    localStorage.setItem("currentUser", id);
     alert("🎉 로그인 성공!");
     location.href = user.role === "admin" ? "admin.html" : "main.html";
 

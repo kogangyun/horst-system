@@ -1,7 +1,5 @@
 import { db } from "./firebase.js";
-import {
-  ref, get, set, remove, update
-} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { ref, get, set, remove, update, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // 🔐 관리자 확인
 const currentUser = localStorage.getItem("currentUser");
@@ -23,18 +21,18 @@ function renderBlockedUsers() {
   const ul = document.getElementById("blockedUsers");
   ul.innerHTML = "";
 
-  get(ref(db, "users")).then(snap => {
+  // 차단된 유저만 가져오기
+  const blockedUsersQuery = query(ref(db, "users"), orderByChild("isBlocked"), equalTo(true));
+  get(blockedUsersQuery).then(snap => {
     if (!snap.exists()) return;
     const users = snap.val();
     Object.entries(users).forEach(([uid, user]) => {
-      if (user.isBlocked) {
-        const li = document.createElement("li");
-        li.innerHTML = ` 
-          <span>${uid}</span>
-          <button onclick="unblockUser('${uid}')" class="ban-btn" style="background:#0ff; color:#000;">차단 해제</button>
-        `;
-        ul.appendChild(li);
-      }
+      const li = document.createElement("li");
+      li.innerHTML = ` 
+        <span>${uid}</span>
+        <button onclick="unblockUser('${uid}')" class="ban-btn" style="background:#0ff; color:#000;">차단 해제</button>
+      `;
+      ul.appendChild(li);
     });
   });
 }
@@ -64,7 +62,9 @@ window.renderUserList = () => {
   const listEl = document.getElementById("userList");
   const keyword = document.getElementById("searchUser")?.value?.toLowerCase() || "";
 
-  get(ref(db, "users")).then((snap) => {
+  // 검색어로 유저 리스트 필터링 (차단된 유저 제외)
+  const usersQuery = query(ref(db, "users"), orderByChild("uid"));
+  get(usersQuery).then((snap) => {
     if (!snap.exists()) return;
     const users = Object.entries(snap.val())
       .filter(([uid, data]) =>
@@ -114,19 +114,18 @@ function renderPendingUsers() {
   const ul = document.getElementById("pendingUsers");
   ul.innerHTML = "";
 
-  get(ref(db, "users")).then(snap => {
+  const pendingUsersQuery = query(ref(db, "users"), orderByChild("status"), equalTo("pending"));
+  get(pendingUsersQuery).then(snap => {
     if (!snap.exists()) return;
     const users = snap.val();
     Object.entries(users).forEach(([uid, user]) => {
-      if (user.status === "pending") {
-        const li = document.createElement("li");
-        li.innerHTML = `
-          <span>${uid} (${user.status})</span>
-          <button onclick="approveUser('${uid}')">승인</button>
-          <button onclick="rejectUser('${uid}')">거절</button>
-        `;
-        ul.appendChild(li);
-      }
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <span>${uid} (${user.status})</span>
+        <button onclick="approveUser('${uid}')">승인</button>
+        <button onclick="rejectUser('${uid}')">거절</button>
+      `;
+      ul.appendChild(li);
     });
   });
 }
