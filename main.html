@@ -24,27 +24,6 @@
     }
     .logo { margin: 40px auto 20px; }
     .logo img { width: 180px; filter: drop-shadow(0 0 10px #00eaff); }
-
-    .user-info {
-      font-size: 1.4rem;
-      margin-top: 10px;
-      margin-bottom: 10px;
-      text-shadow: 0 0 8px #00f2ff;
-    }
-
-    /* 네온 글로우 */
-    .high-glow     { animation: glow-high 1.5s ease-in-out infinite; color: #ffd700; }
-    .mid-upper-glow{ animation: glow-mid-upper 1.5s ease-in-out infinite; color: #ffa500; }
-    .middle-glow   { animation: glow-middle 1.5s ease-in-out infinite; color: #00bfff; }
-    .lower-glow    { animation: glow-lower 1.5s ease-in-out infinite; color: #ff69b4; }
-    .default-glow  { animation: glow-default 1.5s ease-in-out infinite; color: #888; }
-
-    @keyframes glow-high      { 0%,100%{text-shadow:0 0 12px #ffd700;}50%{text-shadow:0 0 24px #ffec00;} }
-    @keyframes glow-mid-upper { 0%,100%{text-shadow:0 0 12px #ffa500;}50%{text-shadow:0 0 24px #ffb830;} }
-    @keyframes glow-middle    { 0%,100%{text-shadow:0 0 12px #00bfff;}50%{text-shadow:0 0 24px #00d4ff;} }
-    @keyframes glow-lower     { 0%,100%{text-shadow:0 0 12px #ff69b4;}50%{text-shadow:0 0 24px #ff85c1;} }
-    @keyframes glow-default   { 0%,100%{text-shadow:0 0 12px #888;}50%{text-shadow:0 0 24px #aaa;} }
-
     .box {
       background: #111;
       border: 2px solid #7b2ff7;
@@ -86,13 +65,9 @@
   </style>
 </head>
 <body>
-
   <div class="logo">
     <img src="horst-logo.png" alt="HORST 로고">
   </div>
-
-  <!-- 유저 정보 표시 -->
-  <div id="userInfo" class="user-info">유저 정보 로딩 중...</div>
 
   <!-- 환영 인사 & 이용 기간 -->
   <div class="box" id="welcomeBox"></div>
@@ -111,7 +86,28 @@
     <button onclick="logout()">🚪 로그아웃</button>
   </div>
 
-  <!-- 시즌/공지사항 -->
+<!-- 토너먼트 -->
+<div class="box">
+  <div class="section-title">🏅 토너먼트</div>
+  <p><strong>맵:</strong> <span id="tournamentMap">불러오는 중...</span></p>
+  <p id="tournamentTime" style="color: #00ff88; font-weight: bold; margin-top: 10px;"></p>
+  <p id="queueStatus"></p>
+  <button id="joinTournamentBtn" onclick="joinTournament()">⚔️ 토너먼트 참가</button>
+  <button id="cancelTournamentBtn" onclick="cancelTournament()">❌ 토너먼트 취소</button>
+  <div id="participantList"></div>
+</div>
+
+  <!-- 실시간 매칭 -->
+  <div class="box">
+    <div class="section-title">🔍 실시간 매칭</div>
+    <p id="statusText">현재 대기 중...</p>
+    <p id="timer">경과 시간: 0초</p>
+    <button onclick="joinMatch()">⚔️ 매칭 참가</button>
+    <button onclick="cancelMatch()">❌ 매칭 취소</button>
+    <div id="matchResult" style="margin-top: 20px;"></div>
+  </div>
+
+  <!-- 시즌 정보 & 공지사항 -->
   <div class="box">
     <div class="section-title">📅 시즌 정보</div>
     <p id="seasonInfo">시즌 정보 로딩 중...</p>
@@ -124,68 +120,70 @@
   <!-- 매칭 완료 사운드 -->
   <audio id="matchSound" src="assets/match-sound.m4a" preload="auto"></audio>
 
-  <!-- 스크립트 -->
+  <!-- 매칭 & 토너먼트 로직 -->
+  <script type="module" src="main.js"></script>
   <script type="module">
     import { db } from './firebase.js';
     import { ref, get, child } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js';
 
-    const currentUser = sessionStorage.getItem('currentUser');
+    // 로그인/로그아웃 처리
+    const currentUser = localStorage.getItem('currentUser');
     if (!currentUser) {
       alert('로그인이 필요합니다.');
       location.href = 'index.html';
     }
     function logout() {
-      sessionStorage.removeItem('currentUser');
+      localStorage.removeItem('currentUser');
       location.href = 'index.html';
     }
     window.logout = logout;
 
-    const userInfo = document.getElementById('userInfo');
-
+    // 환영 메시지 및 클랜명 표시
+    const welcomeBox = document.getElementById('welcomeBox');
     (async () => {
       try {
-        const snap = await get(ref(db, `users`));
-        if (!snap.exists()) {
-          userInfo.textContent = `${currentUser}`;
-          return;
-        }
-
-        const users = snap.val();
-        const ranking = Object.entries(users).filter(([id, data]) => data.score !== undefined)
-          .sort((a, b) => b[1].score - a[1].score);
-
-        let rank = ranking.findIndex(([id, _]) => id === currentUser) + 1;
-        let userScore = users[currentUser]?.score || 1000;
-
-        let glowClass = "default-glow";
-
-        if (userScore >= 3000) glowClass = "high-glow";
-        else if (userScore >= 2600) glowClass = "mid-upper-glow";
-        else if (userScore >= 2200) glowClass = "middle-glow";
-        else if (userScore >= 1800) glowClass = "lower-glow";
-        else if (userScore >= 1200) glowClass = ""; // 파란색 (네온 없음)
-        else glowClass = "default-glow"; // 1199 이하 회색
-
-        let star = "";
-        if (rank >= 1 && rank <= 5) {
-          const stars = 6 - rank;
-          star = `<span style="color: #ffd700;">${'★'.repeat(stars)}</span> `;
-        }
-
-        const scoreDisplay = (userScore > 3400 ? 3400 : userScore) + "점";
-
-        if (glowClass) {
-          userInfo.innerHTML = `${star}<span class="${glowClass}">${currentUser} (${scoreDisplay})</span>`;
+        const snap = await get(child(ref(db), `users/${currentUser}`));
+        if (snap.exists()) {
+          const user = snap.val();
+          const clan = user.clanName || '미소속';
+          welcomeBox.innerHTML =
+            `<h2>${currentUser}님 (클랜: ${clan})님, HORST에 오신 것을 환영합니다</h2>`;
         } else {
-          userInfo.innerHTML = `${star}<span style="color: #00f2ff;">${currentUser} (${scoreDisplay})</span>`;
+          welcomeBox.innerHTML =
+            `<h2>${currentUser}님, HORST에 오신 것을 환영합니다</h2>`;
         }
-
       } catch (err) {
         console.error(err);
-        userInfo.textContent = `${currentUser}`;
+        welcomeBox.innerHTML = `<h2>${currentUser}님, HORST에 오신 것을 환영합니다</h2>`;
+      }
+    })();
+
+    // 이용 기간 표시 및 만료 체크
+    const billingInfo = document.getElementById('billingInfo');
+    (async () => {
+      try {
+        const snap = await get(child(ref(db), `users/${currentUser}`));
+        if (snap.exists()) {
+          const user = snap.val();
+          const joinedAt = new Date(user.joinedAt);
+          const today = new Date();
+          const daysPassed = Math.floor((today - joinedAt) / (1000 * 60 * 60 * 24));
+          const daysLeft = 30 - daysPassed;
+          if (daysLeft <= 0 && currentUser !== 'admin') {
+            alert('⛔ 이용 기간이 만료되었습니다. 갱신해주세요.');
+            sessionStorage.removeItem('currentUser');
+            location.href = 'index.html';
+          } else {
+            billingInfo.innerText = `남은 이용 기간: ${daysLeft}일`;
+          }
+        } else {
+          billingInfo.innerText = '이용자 정보를 불러올 수 없습니다.';
+        }
+      } catch (err) {
+        console.error(err);
+        billingInfo.innerText = '이용 기간 로딩 중 오류 발생';
       }
     })();
   </script>
-
 </body>
 </html>
