@@ -1,9 +1,18 @@
 import { db } from "./firebase.js";
-import { ref, get, set, remove, update, query, orderByChild, equalTo } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import {
+  ref,
+  get,
+  set,
+  remove,
+  update,
+  query,
+  orderByChild,
+  equalTo,
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // 🔐 관리자 확인
 const currentUser = localStorage.getItem("currentUser");
-get(ref(db, `users/${currentUser}`)).then(snap => {
+get(ref(db, `users/${currentUser}`)).then((snap) => {
   if (!snap.exists() || snap.val().role !== "admin") {
     alert("관리자만 접근 가능합니다.");
     location.href = "index.html";
@@ -22,14 +31,14 @@ function renderBlockedUsers() {
   ul.innerHTML = "";
 
   const blockedUsersQuery = query(ref(db, "users"), orderByChild("isBlocked"), equalTo(true));
-  get(blockedUsersQuery).then(snap => {
+  get(blockedUsersQuery).then((snap) => {
     if (!snap.exists()) return;
     const users = snap.val();
-    Object.entries(users).forEach(([uid, user]) => {
+    Object.entries(users).forEach(([uid]) => {
       const li = document.createElement("li");
-      li.innerHTML = ` 
+      li.innerHTML = `
         <span>${uid}</span>
-        <button onclick="unblockUser('${uid}')" class="ban-btn" style="background:#0ff; color:#000;">차단 해제</button>
+        <button onclick="unblockUser('${uid}')" class="ban-btn">차단 해제</button>
       `;
       ul.appendChild(li);
     });
@@ -53,66 +62,42 @@ window.banUser = async (uid) => {
   renderUserList();
 };
 
-// ✅ 유저 검색 + 페이징
-let currentPage = 1;
-const usersPerPage = 10;
-
+// ✅ 회원 목록 (승인된 유저만)
 window.renderUserList = () => {
   const listEl = document.getElementById("userList");
   const keyword = document.getElementById("searchUser")?.value?.toLowerCase() || "";
 
-  const usersQuery = query(ref(db, "users"), orderByChild("uid"));
-  get(usersQuery).then((snap) => {
+  get(ref(db, "users")).then((snap) => {
     if (!snap.exists()) return;
     const users = Object.entries(snap.val())
       .filter(([uid, data]) =>
-        uid.toLowerCase().includes(keyword) && !data.isBlocked && uid !== currentUser
+        data.status === "approved" &&
+        uid.toLowerCase().includes(keyword)
       );
 
-    const totalPages = Math.ceil(users.length / usersPerPage);
-    currentPage = Math.min(currentPage, totalPages || 1);
-    const start = (currentPage - 1) * usersPerPage;
-    const pagedUsers = users.slice(start, start + usersPerPage);
-
     listEl.innerHTML = "";
-    pagedUsers.forEach(([uid, data]) => {
+    if (users.length === 0) {
+      listEl.innerHTML = "<li>등록된 유저 없음</li>";
+      return;
+    }
+
+    users.forEach(([uid, data]) => {
       const li = document.createElement("li");
-      li.innerHTML = ` 
+      li.innerHTML = `
         <span>${uid} (${data.role || "user"})</span>
         <button onclick="banUser('${uid}')" class="ban-btn">❌ 추방</button>
       `;
       listEl.appendChild(li);
     });
-
-    renderPagination(totalPages);
   });
 };
 
-function renderPagination(totalPages) {
-  const container = document.getElementById("userList");
-  const nav = document.createElement("div");
-  nav.style.marginTop = "10px";
-
-  for (let i = 1; i <= totalPages; i++) {
-    const btn = document.createElement("button");
-    btn.textContent = i;
-    btn.onclick = () => {
-      currentPage = i;
-      renderUserList();
-    };
-    if (i === currentPage) btn.style.fontWeight = "bold";
-    nav.appendChild(btn);
-  }
-
-  container.appendChild(nav);
-}
-
-// ✅ 가입 대기자 목록 (수정된 부분)
+// ✅ 가입 대기자 목록
 function renderPendingUsers() {
   const ul = document.getElementById("pendingUsers");
   ul.innerHTML = "";
 
-  get(ref(db, "users")).then(snap => {
+  get(ref(db, "users")).then((snap) => {
     if (!snap.exists()) return;
     const users = snap.val();
     Object.entries(users).forEach(([uid, user]) => {
@@ -134,6 +119,7 @@ window.approveUser = async (uid) => {
   await update(ref(db, `users/${uid}`), { status: "approved" });
   alert(`${uid}님이 승인되었습니다.`);
   renderPendingUsers();
+  renderUserList();
 };
 
 // ✅ 가입 거절
@@ -178,7 +164,7 @@ window.deleteNotice = async (index) => {
   renderNotices();
 };
 
-// ✅ 이의제기 관리 + 24시간 지나면 자동 삭제
+// ✅ 이의제기 관리
 function renderDisputes() {
   const tbody = document.getElementById("disputeList");
   tbody.innerHTML = "";
@@ -215,7 +201,7 @@ function renderDisputes() {
 window.resolveDispute = async (matchId) => {
   await update(ref(db, `matchDisputes/${matchId}`), {
     status: "resolved",
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
   alert("이의제기 해결됨");
   renderDisputes();
