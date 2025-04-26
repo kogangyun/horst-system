@@ -4,9 +4,9 @@ import { getDatabase } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-
 
 // 🔥 너의 Firebase 프로젝트 설정
 const firebaseConfig = {
-  apiKey: "AIzaSyDoCGtKlYz1UHjbayvrcnZPBYGnbIfi9oA",
+  apiKey: "AIzaSyDoCGtKlYz1UHjbayvrcnZPBYGnbIfi9oA", // 기존 사용
   authDomain: "horst-system.firebaseapp.com",
-  databaseURL: "https://horst-system.firebaseio.com", // ✅ 수정 완료
+  databaseURL: "https://horst-system-default-rtdb.firebaseio.com",
   projectId: "horst-system",
   storageBucket: "horst-system.appspot.com",
   messagingSenderId: "910572344791",
