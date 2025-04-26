@@ -6,9 +6,9 @@ import { getDatabase } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-
 const firebaseConfig = {
   apiKey: "AIzaSyDoCGtKlYz1UHjbayvrcnZPBYGnbIfi9oA",
   authDomain: "horst-system.firebaseapp.com",
-  databaseURL: "https://horst-system-default-rtdb.firebaseio.com",
+  databaseURL: "https://horst-system.firebaseio.com", // ✅ 수정 완료
   projectId: "horst-system",
-  storageBucket: "horst-system.appspot.com", // ✅ 수정됨!
+  storageBucket: "horst-system.appspot.com",
   messagingSenderId: "910572344791",
   appId: "1:910572344791:web:c09935b85832f83a1ca792",
   measurementId: "G-DDRGEQLFX5"
