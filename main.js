@@ -13,6 +13,9 @@ if (!currentUser) {
 
 // — 토너먼트 설정 —
 const maxParticipants = 20;
+// 사운드 중복 재생 방지 플래그
+let tournamentSoundPlayed = false;
+
 // 화면 요소
 const tournamentTime  = document.getElementById("tournamentTime");
 const mapDisplay      = document.getElementById("mapDisplay");
@@ -20,8 +23,9 @@ const queueStatus     = document.getElementById("queueStatus");
 const participantList = document.getElementById("participantList");
 const joinTournBtn    = document.getElementById("joinTournamentBtn");
 const cancelTournBtn  = document.getElementById("cancelTournamentBtn");
+const matchSound      = document.getElementById("matchSound");
 
-// 다음 금요일 19:00 계산 및 표시
+// 다음 금요일 19:00 계산
 function getNextFridayAt7PM() {
   const now = new Date();
   const daysUntilFri = (5 - now.getDay() + 7) % 7 || 7;
@@ -30,24 +34,41 @@ function getNextFridayAt7PM() {
   next.setHours(19,0,0,0);
   return next;
 }
+
+// 토너먼트 카운트다운 & 7시 사운드 처리
 function updateTournamentTimer() {
   const now = new Date();
   const end = getNextFridayAt7PM();
   const diff = end - now;
+
   if (diff <= 0) {
     tournamentTime.innerText = "토너먼트 시작!";
+
+    // 오후 7시 도달 시, 참가자 수 확인 후 사운드 재생 (한 번만)
+    if (!tournamentSoundPlayed) {
+      get(ref(db, "tournament/participants")).then(snap => {
+        const parts = snap.val() || {};
+        const cnt = Object.keys(parts).length;
+        if (cnt >= maxParticipants) {
+          matchSound.play();
+        }
+      });
+      tournamentSoundPlayed = true;
+    }
+
     return;
   }
-  const d = Math.floor(diff/86400000);
-  const h = Math.floor((diff%86400000)/3600000);
-  const m = Math.floor((diff%3600000)/60000);
-  const s = Math.floor((diff%60000)/1000);
+
+  const d = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  const s = Math.floor((diff % 60000) / 1000);
   tournamentTime.innerText = `다음 토너먼트까지: ${d}일 ${h}시간 ${m}분 ${s}초`;
 }
 updateTournamentTimer();
 setInterval(updateTournamentTimer, 1000);
 
-// 토너먼트 정보 구독 (맵 등)
+// 토너먼트 정보 구독 (맵 표시)
 onValue(ref(db, "tournament"), snap => {
   const data = snap.val() || {};
   mapDisplay.innerHTML = `<p><strong>맵:</strong> ${data.map||"정보 없음"}</p>`;
@@ -93,7 +114,6 @@ cancelTournBtn.addEventListener('click', async () => {
 const statusText = document.getElementById("statusText");
 const timerBox   = document.getElementById("timer");
 const resultBox  = document.getElementById("matchResult");
-const matchSound = document.getElementById("matchSound");
 
 const maps = [
   "영원의 전쟁터", "용의 둥지", "하늘 사원",
@@ -116,8 +136,10 @@ function updateMatchStatus() {
   statusText.innerText = `현재 ${queue.length}/10명 대기 중...`;
   if (queue.length < 10) return;
 
-  clearInterval(timerInterval);
   const players = queue.slice(0,10);
+  if (!players.includes(currentUser)) return;
+
+  clearInterval(timerInterval);
   const map = maps[Math.floor(Math.random() * maps.length)];
 
   // 균등 편성

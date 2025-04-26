@@ -1,4 +1,3 @@
-<!-- result.html -->
 <!DOCTYPE html>
 <html lang="ko">
 <head>
@@ -45,6 +44,7 @@
     ul li {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       padding: 10px;
       margin: 8px 0;
       background: #1b1b1b;
@@ -63,7 +63,7 @@
       text-shadow: 0 0 10px #ffd700;
     }
     select {
-      margin-top: 10px;
+      margin-left: 10px;
       padding: 6px;
       font-size: 16px;
       border-radius: 4px;
@@ -85,27 +85,12 @@
       transition: transform 0.2s;
     }
     button:hover { transform: scale(1.05); }
-    #manualDisputeBtn {
-      margin-left: 10px;
-      font-size: 16px;
-      background-color: #ff2f5e;
-      color: white;
-    }
-    #manualDisputeNotice {
-      margin-top: 10px;
-      color: #ff7070;
-      font-size: 16px;
-    }
-    /* ✨ 점수에 따른 글로우 클래스 */
-    .admin-glow { animation: glow-admin 1.5s ease-in-out infinite; }
-    .neon-glow { animation: glow-neon 1.5s ease-in-out infinite; }
+    /* Score glow classes */
     .high-glow { animation: glow-high 1.5s ease-in-out infinite; }
     .mid-upper-glow { animation: glow-mid-upper 1.5s ease-in-out infinite; }
     .middle-glow { animation: glow-middle 1.5s ease-in-out infinite; }
     .lower-glow { animation: glow-lower 1.5s ease-in-out infinite; }
     .default-glow { animation: glow-default 1.5s ease-in-out infinite; }
-    @keyframes glow-admin { 0%,100% { text-shadow: 0 0 10px #ffffff; } 50% { text-shadow: 0 0 20px #ff0000; } }
-    @keyframes glow-neon { 0%,100% { text-shadow: 0 0 10px #39ff14; } 50% { text-shadow: 0 0 20px #0aff00; } }
     @keyframes glow-high { 0%,100% { text-shadow: 0 0 10px #ffd700; } 50% { text-shadow: 0 0 20px #ffec00; } }
     @keyframes glow-mid-upper { 0%,100% { text-shadow: 0 0 10px #ffa500; } 50% { text-shadow: 0 0 20px #ffb830; } }
     @keyframes glow-middle { 0%,100% { text-shadow: 0 0 10px #00bfff; } 50% { text-shadow: 0 0 20px #00d4ff; } }
@@ -114,7 +99,17 @@
   </style>
 </head>
 <body>
-  <div id="resultForm" class="container"></div>
+  <div class="container" id="resultForm">
+    <div class="match-box">
+      <div class="team" id="teamA"></div>
+      <div class="map-center" id="mapCenter"></div>
+      <div class="team" id="teamB"></div>
+    </div>
+  </div>
+
+  <!-- 매칭 완료 사운드 -->
+  <audio id="matchSound" src="assets/match-sound.m4a" preload="auto"></audio>
+
   <script type="module" src="result.js"></script>
 </body>
 </html>

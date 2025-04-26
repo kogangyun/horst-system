@@ -1,120 +1,114 @@
+// result.js
 import { db } from "./firebase.js";
 import { ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
-// 현재 로그인한 유저
-const currentUser = localStorage.getItem("currentUser");
+// 1) 로그인 체크 → sessionStorage 사용
+const currentUser = sessionStorage.getItem("currentUser");
 if (!currentUser) {
   alert("로그인이 필요합니다.");
   location.href = "index.html";
 }
 
-let queue = []; // 매칭 대기열
-let maxQueueSize = 20; // 최대 대기 인원
-let tournamentStarted = false; // 토너먼트 시작 여부
+// 2) DOM 요소들
+const resultForm = document.getElementById("resultForm");
+if (!resultForm) {
+  console.error("⚠️ #resultForm 요소를 찾을 수 없습니다.");
+}
 
-// DOM 요소
-const statusText = document.getElementById("statusText");
-const queueStatus = document.getElementById("queueStatus");
-const tournamentTime = document.getElementById("tournamentTime");
-const matchResult = document.getElementById("matchResult");
+// 3) 점수별 네온 글로우 클래스 함수
+function getGlowClass(score) {
+  if (score >= 1200)     return "high-glow";
+  if (score >= 1000)     return "mid-upper-glow";
+  if (score >= 800)      return "middle-glow";
+  if (score >= 600)      return "lower-glow";
+  return "default-glow";
+}
 
-// 토너먼트 대기 시간 설정
-const tournamentStartTime = new Date(); // 예시로, 지금부터 7일 후로 설정
-tournamentStartTime.setDate(tournamentStartTime.getDate() + 7); // 7일 후
+// 4) 매칭 정보를 불러와서 화면 렌더링
+async function loadAndRenderMatch() {
+  try {
+    const snap = await get(ref(db, "currentMatch"));
+    if (!snap.exists()) {
+      resultForm.innerHTML = "<p>✨ 매칭 정보가 없습니다.</p>";
+      return;
+    }
+    const match = snap.val();
+    const { id, map, teamA, teamB } = match;
 
-// 토너먼트 시작 카운트다운 업데이트
-function updateTournamentTime() {
-  const now = new Date();
-  const timeDiff = tournamentStartTime - now;
+    // 맵 중앙 표시
+    const mapDiv = document.createElement("div");
+    mapDiv.className = "map-center";
+    mapDiv.textContent = `맵: ${map}`;
+    resultForm.appendChild(mapDiv);
 
-  if (timeDiff <= 0) {
-    tournamentTime.innerText = "토너먼트 시작!";
-  } else {
-    const days = Math.floor(timeDiff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-    tournamentTime.innerText = `다음 토너먼트 시작까지 남은 시간: ${days}일 ${hours}시간 ${minutes}분 ${seconds}초`;
+    // 팀 박스 생성
+    function makeTeamBox(name, players, field) {
+      const box = document.createElement("div");
+      box.className = "team";
+
+      const title = document.createElement("h3");
+      title.textContent = name;
+      box.appendChild(title);
+
+      const ul = document.createElement("ul");
+      // (현재 점수는 모두 1000점으로 고정; 실제 점수 데이터가 있으면 대체)
+      const scores = players.map(() => 1000);
+      // 팀장(최고 점수)를 players[0]로 가정
+      const captain = players[0];
+
+      players.forEach((p, i) => {
+        const li = document.createElement("li");
+        li.className = getGlowClass(scores[i]);
+        li.innerHTML = `<span>${p} (${scores[i]}점)</span>`;
+        if (p === captain) {
+          const sel = document.createElement("select");
+          sel.id = field;
+          sel.innerHTML = `
+            <option value="">-- 결과 선택 --</option>
+            <option value="win">Win</option>
+            <option value="lose">Lose</option>
+          `;
+          li.appendChild(sel);
+        }
+        ul.appendChild(li);
+      });
+
+      box.appendChild(ul);
+      return box;
+    }
+
+    // 매칭 박스 컨테이너
+    const matchBox = document.createElement("div");
+    matchBox.className = "match-box";
+    matchBox.appendChild(makeTeamBox("팀 A", teamA, "resultA"));
+    matchBox.appendChild(makeTeamBox("팀 B", teamB, "resultB"));
+    resultForm.appendChild(matchBox);
+
+    // 제출 버튼
+    const btn = document.createElement("button");
+    btn.textContent = "결과 제출";
+    btn.onclick = async () => {
+      const resA = document.getElementById("resultA").value;
+      const resB = document.getElementById("resultB").value;
+      if (!resA || !resB) {
+        return alert("팀장 승패를 모두 선택해주세요.");
+      }
+      await set(ref(db, `matchResults/${id}`), {
+        map,
+        teamA, resultA: resA,
+        teamB, resultB: resB,
+        timestamp: new Date().toISOString()
+      });
+      alert("✅ 결과가 저장되었습니다.");
+      location.href = "main.html";
+    };
+    resultForm.appendChild(btn);
+
+  } catch (err) {
+    console.error("❌ 매칭 정보를 불러오는 중 오류:", err);
+    resultForm.innerHTML = "<p>매칭 정보를 가져오는 중 오류가 발생했습니다.</p>";
   }
 }
 
-// 대기열 상태 실시간 업데이트
-onValue(ref(db, "matchQueue"), (snapshot) => {
-  queue = snapshot.val() || [];
-  updateQueueStatus();
-});
-
-// 대기 인원 상태 업데이트
-function updateQueueStatus() {
-  const queueLength = queue.length;
-  queueStatus.innerText = `현재 대기 중: ${queueLength}/${maxQueueSize}`;
-
-  if (queueLength >= maxQueueSize && !tournamentStarted) {
-    // 대기열이 꽉 차면 토너먼트 시작
-    startTournament();
-  }
-}
-
-// 매칭 대기열에 참가
-window.joinMatch = () => {
-  if (!currentUser) return alert("로그인이 필요합니다.");
-  if (queue.includes(currentUser)) return alert("이미 대기 중입니다.");
-  if (localStorage.getItem("matchingPaused") === "true") return alert("매칭이 일시 중단되었습니다.");
-
-  queue.push(currentUser);
-  set(ref(db, "matchQueue"), queue);
-  updateQueueStatus();
-};
-
-// 매칭 취소
-window.cancelMatch = () => {
-  queue = queue.filter(user => user !== currentUser);
-  set(ref(db, "matchQueue"), queue);
-  updateQueueStatus();
-};
-
-// 토너먼트 시작
-window.startTournament = () => {
-  if (queue.length < maxQueueSize) {
-    alert("매칭 대기 인원이 충분하지 않습니다.");
-    return;
-  }
-
-  alert("토너먼트가 시작되었습니다!");
-  tournamentStarted = true;
-
-  // 토너먼트 맵 랜덤 선택
-  const maps = [
-    "영원의 전쟁터", "용의 둥지", "하늘 사원", "브락시스 항전",
-    "파멸의 탑", "볼스카야 공장", "저주의 골짜기", "거미 여왕의 무덤"
-  ];
-  const map = maps[Math.floor(Math.random() * maps.length)];
-  matchResult.innerHTML = `
-    <h3>🎮 매칭 완료!</h3>
-    <p><strong>맵:</strong> ${map}</p>
-    <p><strong>팀 A:</strong> ...</p>
-    <p><strong>팀 B:</strong> ...</p>
-  `;
-
-  // 대기열 초기화
-  queue = [];
-  set(ref(db, "matchQueue"), queue);
-  updateQueueStatus();
-};
-
-// 토너먼트 취소
-window.cancelTournament = () => {
-  alert("토너먼트가 취소되었습니다.");
-  tournamentStarted = false;
-
-  // 대기열 초기화
-  queue = [];
-  set(ref(db, "matchQueue"), queue);
-  updateQueueStatus();
-};
-
-// 실시간 카운트다운 시작
-setInterval(updateTournamentTime, 1000);
-
-// 초기 대기열 상태 업데이트
-updateQueueStatus();
+// 실행
+loadAndRenderMatch();
