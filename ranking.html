@@ -4,121 +4,15 @@
   <meta charset="UTF-8" />
   <title>HORST 점수 랭킹</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500&display=swap" rel="stylesheet">
-  <style>
-    body {
-      background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
-      color: #00f2ff;
-      font-family: 'Orbitron', sans-serif;
-      text-align: center;
-      margin: 0;
-      padding: 0;
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: linear-gradient(-45deg, #00f2ff, #7b2ff7, #00f2ff, #1a1a1a);
-      background-size: 400% 400%;
-      animation: neonBG 15s ease infinite;
-      z-index: -1;
-      opacity: 0.06;
-    }
-
-    @keyframes neonBG {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    h1 {
-      color: #9f69ff;
-      margin-top: 50px;
-      font-size: 2rem;
-      text-shadow: 0 0 12px #9f69ff;
-    }
-
-    table {
-      margin: 30px auto;
-      border-collapse: collapse;
-      width: 90%;
-      max-width: 1000px;
-      background-color: rgba(0, 0, 0, 0.7);
-      border: 2px solid #7b2ff7;
-      box-shadow: 0 0 20px rgba(123, 47, 247, 0.3);
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    th, td {
-      padding: 14px;
-      border-bottom: 1px solid #00f2ff;
-      font-size: 1rem;
-    }
-
-    th {
-      background-color: #1a1a1a;
-      color: #00f2ff;
-      font-size: 1.1rem;
-    }
-
-    tr:nth-child(even) {
-      background-color: #111;
-    }
-
-    tr:nth-child(odd) {
-      background-color: #000;
-    }
-
-    tr:hover {
-      background-color: #222;
-    }
-
-    /* 랭킹 색상과 애니메이션 */
-    .neon-glow {
-      color: #00f2ff;
-      text-shadow: 0 0 10px #00f2ff, 0 0 20px #00f2ff, 0 0 30px #00f2ff;
-      animation: neon-glow 1.5s ease-in-out infinite;
-    }
-
-    .high-glow {
-      color: #7b2ff7;
-      text-shadow: 0 0 10px #7b2ff7, 0 0 20px #7b2ff7, 0 0 30px #7b2ff7;
-      animation: neon-glow 1.5s ease-in-out infinite;
-    }
-
-    .mid-upper-glow {
-      color: #ff4500;
-      text-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500, 0 0 30px #ff4500;
-      animation: neon-glow 1.5s ease-in-out infinite;
-    }
-
-    .middle-glow {
-      color: #ffff00;
-      text-shadow: 0 0 10px #ffff00, 0 0 20px #ffff00, 0 0 30px #ffff00;
-      animation: neon-glow 1.5s ease-in-out infinite;
-    }
-
-    .lower-glow {
-      color: #daa520;
-      text-shadow: 0 0 10px #daa520, 0 0 20px #daa520, 0 0 30px #daa520;
-    }
-
-    .default-glow {
-      color: #808080;
-    }
-
-    /* Neon glow animation */
-    @keyframes neon-glow {
-      0% { text-shadow: 0 0 10px #00f2ff, 0 0 20px #00f2ff, 0 0 30px #00f2ff; }
-      50% { text-shadow: 0 0 20px #7b2ff7, 0 0 30px #7b2ff7, 0 0 40px #7b2ff7; }
-      100% { text-shadow: 0 0 10px #ff4500, 0 0 20px #ff4500, 0 0 30px #ff4500; }
-    }
-  </style>
+  <link rel="stylesheet" href="ranking.css">
 </head>
 <body>
+
   <h1>🏆 HORST 점수 랭킹</h1>
+
+  <!-- 🔍 검색창 추가 -->
+  <input type="text" id="searchInput" placeholder="아이디(닉네임) 검색" style="margin: 20px; padding: 10px; font-size: 1rem; width: 300px; border-radius: 10px; border: 2px solid #7b2ff7; background: #111; color: #00f2ff; text-align: center;">
+
   <table id="rankingTable">
     <thead>
       <tr>
@@ -131,64 +25,7 @@
     <tbody></tbody>
   </table>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-app.js";
-    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+  <script type="module" src="ranking.js"></script>
 
-    // Firebase 초기화
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",               // Firebase 프로젝트 API 키
-      authDomain: "YOUR_AUTH_DOMAIN",       // Firebase 프로젝트 인증 도메인
-      databaseURL: "YOUR_DATABASE_URL",     // Firebase 실시간 데이터베이스 URL
-      projectId: "YOUR_PROJECT_ID",         // Firebase 프로젝트 ID
-      storageBucket: "YOUR_STORAGE_BUCKET", // Firebase 스토리지 버킷
-      messagingSenderId: "YOUR_SENDER_ID", // Firebase 메시징 발송자 ID
-      appId: "YOUR_APP_ID"                  // Firebase 앱 ID
-    };
-
-    // Firebase 앱 초기화
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      const tbody = document.querySelector("#rankingTable tbody");
-      const snapshot = await get(ref(db, "users"));
-      if (!snapshot.exists()) return;
-
-      const users = snapshot.val();
-      const sorted = Object.entries(users)
-        .map(([name, data]) => ({
-          name,
-          clan: data.clan || "-",
-          points: data.points || 0,
-          role: data.role || "user"
-        }))
-        .sort((a, b) => b.points - a.points);
-
-      tbody.innerHTML = "";
-
-      sorted.forEach((user, index) => {
-        const tr = document.createElement("tr");
-
-        // ✨ 등급별 class 적용
-        let pointClass = "";
-        if (user.points >= 3400) pointClass = "neon-glow";  // 최고 점수
-        else if (user.points >= 2700) pointClass = "high-glow";  // 상위 점수
-        else if (user.points >= 2200) pointClass = "mid-upper-glow";  // 중상위 점수
-        else if (user.points >= 1500) pointClass = "middle-glow";  // 중간 점수
-        else if (user.points >= 1200) pointClass = "lower-glow";  // 하위 점수
-        else pointClass = "default-glow";  // 1200 이하 점수
-
-        tr.innerHTML = `
-          <td>${index + 1}</td>
-          <td class="${pointClass}">${user.clan !== "-" ? `[${user.clan}] ` : ""}${user.name}</td>
-          <td>${user.clan}</td>
-          <td>${user.points}</td>
-        `;
-
-        tbody.appendChild(tr);
-      });
-    });
-  </script>
 </body>
 </html>

@@ -1,51 +1,65 @@
 import { db } from "./firebase.js";
 import { ref, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
+let fullUserList = [];
+
 document.addEventListener("DOMContentLoaded", async () => {
   const tbody = document.querySelector("#rankingTable tbody");
+  const searchInput = document.getElementById("searchInput");
+
   const snapshot = await get(ref(db, "users"));
   if (!snapshot.exists()) return;
 
   const users = snapshot.val();
-  const sorted = Object.entries(users)
+  fullUserList = Object.entries(users)
     .map(([name, data]) => ({
       name,
       clan: data.clan || "-",
-      points: data.points || 0,
-      role: data.role || "user"
+      score: data.score || 0,
     }))
-    .sort((a, b) => b.points - a.points);
+    .sort((a, b) => b.score - a.score);
 
-  tbody.innerHTML = "";
+  renderTable(fullUserList);
 
-  sorted.forEach((user, index) => {
-    const tr = document.createElement("tr");
-
-    // ✨ 점수에 따른 class 적용
-    let pointClass = "";
-    if (user.role === "admin") {
-      pointClass = "admin-glow"; // 관리자는 특별한 클래스 적용
-    } else if (user.points >= 3400) {
-      pointClass = "neon-glow";  // 최고 점수
-    } else if (user.points >= 2700) {
-      pointClass = "high-glow";  // 상위 점수
-    } else if (user.points >= 2200) {
-      pointClass = "mid-upper-glow";  // 중상위 점수
-    } else if (user.points >= 1500) {
-      pointClass = "middle-glow";  // 중간 점수
-    } else if (user.points >= 1200) {
-      pointClass = "lower-glow";  // 하위 점수
-    } else {
-      pointClass = "default-glow";  // 기본 색상
-    }
-
-    tr.innerHTML = `
-      <td>${index + 1}</td>
-      <td class="${pointClass}">${user.clan !== "-" ? `[${user.clan}] ` : ""}${user.name}</td>
-      <td>${user.clan}</td>
-      <td>${user.points}</td>
-    `;
-
-    tbody.appendChild(tr);
+  // 🔍 검색 기능
+  searchInput.addEventListener("input", () => {
+    const keyword = searchInput.value.toLowerCase();
+    const filtered = fullUserList.filter(user => user.name.toLowerCase().includes(keyword));
+    renderTable(filtered);
   });
+
+  function renderTable(userList) {
+    tbody.innerHTML = "";
+
+    userList.forEach((user, index) => {
+      const tr = document.createElement("tr");
+
+      // 점수별 색상 class 적용
+      let pointClass = "";
+      const displayScore = user.score > 3400 ? 3400 : user.score;
+
+      if (displayScore >= 3000) pointClass = "high-glow";
+      else if (displayScore >= 2600) pointClass = "mid-upper-glow";
+      else if (displayScore >= 2200) pointClass = "middle-glow";
+      else if (displayScore >= 1800) pointClass = "lower-glow";
+      else if (displayScore >= 1200) pointClass = "";
+      else pointClass = "default-glow";
+
+      // 상위 5등 별 표시
+      let star = "";
+      if (index < 5) {
+        const stars = 5 - index;
+        star = `<span style="color: #ffd700;">${"★".repeat(stars)}</span> `;
+      }
+
+      tr.innerHTML = `
+        <td>${index + 1}</td>
+        <td class="${pointClass}">${star}${user.name}</td>
+        <td>${user.clan}</td>
+        <td>${displayScore}</td>
+      `;
+
+      tbody.appendChild(tr);
+    });
+  }
 });
