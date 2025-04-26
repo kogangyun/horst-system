@@ -12,47 +12,42 @@
       background-size: 400% 400%;
       animation: gradientMove 15s ease infinite;
       color: #00eaff;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Orbitron', sans-serif;
       text-align: center;
     }
-
     @keyframes gradientMove {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
-
     header {
       padding: 30px 0 10px;
     }
-
     header img {
       width: 180px;
       filter: drop-shadow(0 0 10px #00eaff);
     }
-
     h1 {
       font-size: 2.2rem;
       color: #9f69ff;
       text-shadow: 0 0 12px #9f69ff;
     }
-
     .section {
       border: 2px solid #9f69ff;
-      background-color: rgba(0, 0, 0, 0.65);
+      background: rgba(0, 0, 0, 0.7);
       border-radius: 15px;
-      width: 600px;
+      width: 90%;
+      max-width: 700px;
       margin: 30px auto;
       padding: 30px 20px;
       box-shadow: 0 0 15px #9f69ff;
     }
-
     .section h2 {
       color: #00eaff;
-      font-size: 1.5rem;
+      font-size: 1.6rem;
       margin-bottom: 20px;
+      text-shadow: 0 0 8px #00eaff;
     }
-
     button {
       background: linear-gradient(90deg, #00eaff, #9f69ff);
       color: black;
@@ -63,57 +58,54 @@
       cursor: pointer;
       margin: 10px 5px;
       font-size: 1rem;
-      box-shadow: 0 0 8px #00eaff;
+      box-shadow: 0 0 10px #00eaffaa;
+      transition: 0.2s;
     }
-
     button:hover {
-      opacity: 0.9;
+      opacity: 0.85;
+      transform: scale(1.05);
     }
-
-    textarea, input[type="text"] {
+    input[type="text"], textarea {
       width: 90%;
       padding: 10px;
       font-size: 1rem;
       border-radius: 8px;
-      border: 2px solid #9f69ff;
+      border: 2px solid #7b2ff7;
       background: #000;
       color: #fff;
       margin-bottom: 10px;
     }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-
-    th, td {
-      padding: 10px;
-      border: 1px solid #00eaff;
-    }
-
-    th {
-      background-color: #121212;
-      color: #00eaff;
-    }
-
     ul {
       list-style: none;
       padding-left: 0;
+      text-align: left;
+      margin-top: 10px;
     }
-
     li {
-      padding: 8px;
-      margin: 6px 0;
+      background: #1a1a1a;
+      padding: 12px;
+      margin-bottom: 10px;
       border: 1px solid #00eaff;
-      border-radius: 6px;
-      background-color: #1a1a1a;
+      border-radius: 8px;
+      box-shadow: 0 0 8px #00eaff33;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      flex-wrap: wrap;
     }
-
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #00eaff;
+      text-align: center;
+    }
+    th {
+      background: #121212;
+      color: #00eaff;
+    }
     .ban-btn {
       background: #ff2f5e;
       color: white;
@@ -121,90 +113,67 @@
       border-radius: 6px;
       padding: 6px 12px;
       cursor: pointer;
-    }
-
-    .approve-btn {
-      background-color: #00ff7f;
-      color: black;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 12px;
-      margin-left: 6px;
-      cursor: pointer;
-    }
-
-    .reject-btn {
-      background-color: #ff4d4d;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 12px;
-      margin-left: 6px;
-      cursor: pointer;
+      box-shadow: 0 0 8px #ff2f5e88;
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="horst-logo.png" alt="HORST 로고" />
+    <img src="horst-logo.png" alt="HORST 로고">
     <h1>HORST 관리자 페이지</h1>
   </header>
 
-  <!-- 공지사항 -->
+  <!-- 공지사항 관리 -->
   <div class="section">
     <h2>📢 공지사항 관리</h2>
     <form id="noticeForm">
       <textarea id="noticeContent" placeholder="공지 내용을 입력하세요."></textarea><br>
       <button type="submit">공지 추가</button>
     </form>
-    <ul id="noticeList" style="text-align: left;"></ul>
+    <ul id="noticeList"></ul>
   </div>
 
-  <!-- 이의제기 -->
+  <!-- 이의제기 관리 -->
   <div class="section">
-    <h2>⚠️ 이의 제기 관리</h2>
+    <h2>⚡ 이의제기 관리</h2>
     <table>
       <thead>
-        <tr>
-          <th>매치 ID</th>
-          <th>상태</th>
-          <th>처리</th>
-        </tr>
+        <tr><th>매치 ID</th><th>상태</th><th>처리</th></tr>
       </thead>
       <tbody id="disputeList"></tbody>
     </table>
   </div>
 
-  <!-- 차단된 유저 -->
+  <!-- 차단된 유저 목록 -->
   <div class="section">
-    <h2>🚫 차단된 유저 목록</h2>
+    <h2>🚫 차단된 유저</h2>
     <ul id="blockedUsers"></ul>
-  </div>  
+  </div>
 
-  <!-- 가입 대기자 관리 -->
+  <!-- 가입 대기자 목록 -->
   <div class="section">
-    <h2>⚡️ 가입 대기자 관리</h2>
+    <h2>📝 가입 대기자</h2>
     <ul id="pendingUsers"></ul>
   </div>
 
-  <!-- 회원 관리 (검색 + 페이징) -->
+  <!-- 전체 회원 관리 -->
   <div class="section">
     <h2>👥 회원 관리</h2>
-    <input type="text" id="searchUser" placeholder="아이디 검색" oninput="renderUserList()" />
+    <input type="text" id="searchUser" placeholder="아이디 검색" oninput="renderUserList()">
     <ul id="userList"></ul>
   </div>
 
-  <!-- 매칭 통제 -->
+  <!-- 매칭 통제 이동 -->
   <div class="section">
-    <h2>⚔️ 매칭 통제 시스템</h2>
-    <button onclick="location.href='admin-match.html'">매칭 결과 관리</button>
+    <h2>⚔️ 매칭 통제</h2>
+    <button onclick="location.href='admin-match.html'">매칭 관리 이동</button>
   </div>
 
-  <!-- 시즌 정보 -->
+  <!-- 시즌 정보 관리 -->
   <div class="section">
-    <h2>📅 시즌 정보</h2>
-    <textarea id="seasonInput" rows="3"></textarea><br>
-    <button onclick="saveSeason()">📂 저장</button>
+    <h2>📅 시즌 정보 관리</h2>
+    <textarea id="seasonInput" rows="3" placeholder="시즌 설명 입력..."></textarea><br>
+    <button onclick="saveSeason()">시즌 저장</button>
     <p id="seasonNotice"></p>
   </div>
 
@@ -214,6 +183,7 @@
     <button onclick="logout()">로그아웃</button>
   </div>
 
+  <!-- 관리자용 스크립트 -->
   <script type="module" src="admin.js"></script>
 </body>
 </html>
