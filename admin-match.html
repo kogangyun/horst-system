@@ -4,31 +4,99 @@
   <meta charset="UTF-8" />
   <title>관리자 매칭 통제</title>
   <style>
-    body { background: black; color: gold; font-family: sans-serif; text-align: center; }
-    .section { margin: 30px auto; padding: 20px; background: #111; border: 1px solid gold; width: 600px; border-radius: 10px; }
-    input, select, button { margin: 5px; padding: 10px; font-size: 14px; }
+    body {
+      background: linear-gradient(120deg, #1a1a1a, #080031);
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+      background-size: 400% 400%;
+      animation: bgMove 15s ease infinite;
+    }
+    @keyframes bgMove {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    h1 {
+      color: #00eaff;
+      font-size: 2.5rem;
+      margin-top: 40px;
+      text-shadow: 0 0 12px #00eaff;
+    }
+    .section {
+      background: rgba(0, 0, 0, 0.7);
+      border: 2px solid #7b2ff7;
+      margin: 30px auto;
+      padding: 25px;
+      width: 80%;
+      max-width: 700px;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(123, 47, 247, 0.7);
+    }
+    .section h2 {
+      color: #00eaff;
+      font-size: 1.6rem;
+      margin-bottom: 20px;
+      text-shadow: 0 0 8px #00eaff;
+    }
+    input, select, button {
+      margin: 10px;
+      padding: 12px;
+      font-size: 1rem;
+      border-radius: 8px;
+      border: 1px solid #7b2ff7;
+      background: #222;
+      color: #00f2ff;
+    }
+    button {
+      background: linear-gradient(90deg, #00f2ff, #7b2ff7);
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.2s;
+      width: 100%;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    button:hover:not(:disabled) {
+      transform: scale(1.05);
+    }
+    .status-text {
+      font-size: 1.1rem;
+      color: #ff7f00;
+      margin-top: 10px;
+    }
+    .neon-glow {
+      text-shadow: 0 0 10px #ff7f7f, 0 0 20px #ff7f7f, 0 0 30px #ff2f5e;
+    }
   </style>
 </head>
 <body>
   <h1>🛠️ 관리자 매칭 통제 시스템</h1>
 
+  <!-- 사용자 점수 조정 -->
   <div class="section">
-    <h2>🔧 사용자 점수 조정</h2>
+    <h2 class="neon-glow">🔧 사용자 점수 조정</h2>
     <input type="text" id="targetUser" placeholder="사용자 ID" />
     <input type="number" id="scoreChange" placeholder="점수 (+/-)" />
     <button onclick="updateUserScore()">점수 수정</button>
-    <p id="scoreResult"></p>
+    <p id="scoreResult" class="status-text"></p>
   </div>
 
+  <!-- 매칭 기록 삭제 -->
   <div class="section">
-    <h2>📂 매칭 기록 삭제</h2>
+    <h2 class="neon-glow">📂 매칭 기록 삭제</h2>
     <input type="text" id="matchIdToDelete" placeholder="매칭 ID" />
     <button onclick="deleteMatch()">매칭 삭제</button>
-    <p id="matchDeleteStatus"></p>
+    <p id="matchDeleteStatus" class="status-text"></p>
   </div>
 
+  <!-- 승/패 조작 -->
   <div class="section">
-    <h2>⚖️ 승/패 조작</h2>
+    <h2 class="neon-glow">⚖️ 승/패 조작</h2>
     <input type="text" id="matchIdEdit" placeholder="매칭 ID" />
     <input type="text" id="editPlayer" placeholder="참가자 ID" />
     <select id="editResult">
@@ -36,7 +104,7 @@
       <option value="lose">LOSE</option>
     </select>
     <button onclick="editMatchResult()">결과 조작</button>
-    <p id="editStatus"></p>
+    <p id="editStatus" class="status-text"></p>
   </div>
 
   <script src="admin-match.js"></script>

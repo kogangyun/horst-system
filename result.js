@@ -18,6 +18,7 @@ const teamABox      = document.getElementById("teamA");
 const teamBBox      = document.getElementById("teamB");
 const submitBtn     = document.getElementById("submitResultBtn");
 const appealLink    = document.getElementById("appealLink");
+const matchIdDisplay = document.getElementById("matchIdDisplay");  // 매칭 ID 표시 요소 추가
 
 // 변경(change) 이벤트 감지
 document.addEventListener("change", e => {
@@ -98,6 +99,10 @@ async function loadAndRenderMatch() {
     return;
   }
   const { id, map, teamA, teamB } = snap.val();
+
+  // 매칭 ID 표시
+  matchIdDisplay.textContent = `매칭 ID: ${id}`;  // 매칭 ID 화면에 표시
+
   mapCenter.textContent = `맵: ${map}`;
 
   const captainA = teamA[0];
