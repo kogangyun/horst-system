@@ -322,12 +322,4 @@ function checkAndRunTournamentMatch() {
   }
 }
 setInterval(checkAndRunTournamentMatch, 10000); // 10초마다 체크
-const tournamentMap = document.getElementById("tournamentMap");
-onValue(ref(db, "tournament"), (snapshot) => {
-  const data = snapshot.val();
-  if (data && data.map) {
-    tournamentMap.innerText = data.map;
-  } else {
-    tournamentMap.innerText = "맵 정보 없음";
-  }
-});
+

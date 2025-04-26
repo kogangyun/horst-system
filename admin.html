@@ -12,42 +12,47 @@
       background-size: 400% 400%;
       animation: gradientMove 15s ease infinite;
       color: #00eaff;
-      font-family: 'Orbitron', sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       text-align: center;
     }
+
     @keyframes gradientMove {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
     }
+
     header {
       padding: 30px 0 10px;
     }
+
     header img {
       width: 180px;
       filter: drop-shadow(0 0 10px #00eaff);
     }
+
     h1 {
       font-size: 2.2rem;
       color: #9f69ff;
       text-shadow: 0 0 12px #9f69ff;
     }
+
     .section {
       border: 2px solid #9f69ff;
-      background: rgba(0, 0, 0, 0.7);
+      background-color: rgba(0, 0, 0, 0.65);
       border-radius: 15px;
-      width: 90%;
-      max-width: 700px;
+      width: 600px;
       margin: 30px auto;
       padding: 30px 20px;
       box-shadow: 0 0 15px #9f69ff;
     }
+
     .section h2 {
       color: #00eaff;
-      font-size: 1.6rem;
+      font-size: 1.5rem;
       margin-bottom: 20px;
-      text-shadow: 0 0 8px #00eaff;
     }
+
     button {
       background: linear-gradient(90deg, #00eaff, #9f69ff);
       color: black;
@@ -58,54 +63,56 @@
       cursor: pointer;
       margin: 10px 5px;
       font-size: 1rem;
-      box-shadow: 0 0 10px #00eaffaa;
-      transition: 0.2s;
+      box-shadow: 0 0 8px #00eaff;
     }
+
     button:hover {
-      opacity: 0.85;
-      transform: scale(1.05);
+      opacity: 0.9;
     }
-    input[type="text"], textarea {
+
+    textarea, input[type="text"] {
       width: 90%;
       padding: 10px;
       font-size: 1rem;
       border-radius: 8px;
-      border: 2px solid #7b2ff7;
+      border: 2px solid #9f69ff;
       background: #000;
       color: #fff;
       margin-bottom: 10px;
     }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+
+    th, td {
+      padding: 10px;
+      border: 1px solid #00eaff;
+    }
+
+    th {
+      background-color: #121212;
+      color: #00eaff;
+    }
+
     ul {
       list-style: none;
       padding-left: 0;
-      text-align: left;
-      margin-top: 10px;
     }
+
     li {
-      background: #1a1a1a;
-      padding: 12px;
-      margin-bottom: 10px;
+      padding: 8px;
+      margin: 6px 0;
       border: 1px solid #00eaff;
-      border-radius: 8px;
-      box-shadow: 0 0 8px #00eaff33;
+      border-radius: 6px;
+      background-color: #1a1a1a;
       display: flex;
       justify-content: space-between;
       align-items: center;
     }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-    }
-    th, td {
-      padding: 10px;
-      border: 1px solid #00eaff;
-      text-align: center;
-    }
-    th {
-      background: #121212;
-      color: #00eaff;
-    }
+
     .ban-btn {
       background: #ff2f5e;
       color: white;
@@ -113,15 +120,77 @@
       border-radius: 6px;
       padding: 6px 12px;
       cursor: pointer;
-      box-shadow: 0 0 8px #ff2f5e88;
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="horst-logo.png" alt="HORST 로고">
+    <img src="horst-logo.png" alt="HORST 로고" />
     <h1>HORST 관리자 페이지</h1>
   </header>
+
+  <!-- 가입 대기자 -->
+  <div class="section">
+    <h2>가입 대기자 관리</h2>
+    <button onclick="location.href='pending-users.html'">가입 대기자 목록</button>
+  </div>
+
+  <!-- 클랜 신청 -->
+  <div class="section">
+    <h2>클랜 신청 관리</h2>
+    <ul id="pendingClans"></ul>
+  </div>
+
+  <!-- 공지사항 -->
+  <div class="section">
+    <h2>📢 공지사항 관리</h2>
+    <form id="noticeForm">
+      <textarea id="noticeContent" placeholder="공지 내용을 입력하세요."></textarea><br>
+      <button type="submit">공지 추가</button>
+    </form>
+    <ul id="noticeList" style="text-align: left;"></ul>
+  </div>
+
+  <!-- 이의제기 -->
+  <div class="section">
+    <h2>⚠️ 이의 제기 관리</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>매치 ID</th>
+          <th>상태</th>
+          <th>처리</th>
+        </tr>
+      </thead>
+      <tbody id="disputeList"></tbody>
+    </table>
+  </div>
+
+  <!-- 차단된 유저 -->
+  <div class="section">
+    <h2>🚫 차단된 유저 목록</h2>
+    <ul id="blockedUsers"></ul>
+  </div>
+
+  <!-- 매칭 통제 -->
+  <div class="section">
+    <h2>⚔️ 매칭 통제 시스템</h2>
+    <button onclick="location.href='admin-match.html'">매칭 결과 관리</button>
+  </div>
+
+ <!-- 회원 관리 -->
+  <div class="section">
+    <h2>👥 회원 관리</h2>
+    <input type="text" id="searchUser" placeholder="아이디 검색" oninput="renderUserList()">
+    <ul id="userList"></ul>
+
+    <!-- 페이지 네비게이션 -->
+    <div>
+      <button id="prevPage" onclick="changePage('prev')">◀ 이전</button>
+      <span id="pageNumber">1</span> / <span id="totalPages">1</span>
+      <button id="nextPage" onclick="changePage('next')">다음 ▶</button>
+    </div>
+  </div>
 
   <!-- 공지사항 관리 -->
   <div class="section">
@@ -133,49 +202,61 @@
     <ul id="noticeList"></ul>
   </div>
 
-  <!-- 이의제기 관리 -->
-  <div class="section">
-    <h2>⚡ 이의제기 관리</h2>
-    <table>
-      <thead>
-        <tr><th>매치 ID</th><th>상태</th><th>처리</th></tr>
-      </thead>
-      <tbody id="disputeList"></tbody>
-    </table>
-  </div>
+  <script type="module">
+    import { db } from './firebase.js';
+    import { ref, get, child } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js';
 
-  <!-- 차단된 유저 목록 -->
-  <div class="section">
-    <h2>🚫 차단된 유저</h2>
-    <ul id="blockedUsers"></ul>
-  </div>
+    let currentPage = 1;
+    const pageSize = 5;
 
-  <!-- 가입 대기자 목록 -->
-  <div class="section">
-    <h2>📝 가입 대기자</h2>
-    <ul id="pendingUsers"></ul>
-  </div>
+    // 유저 목록 렌더링
+    async function renderUserList() {
+      const keyword = document.getElementById("searchUser").value.toLowerCase();
+      const listEl = document.getElementById("userList");
+      const pageNumberEl = document.getElementById("pageNumber");
+      const totalPagesEl = document.getElementById("totalPages");
 
-  <!-- 전체 회원 관리 -->
-  <div class="section">
-    <h2>👥 회원 관리</h2>
-    <input type="text" id="searchUser" placeholder="아이디 검색" oninput="renderUserList()">
-    <ul id="userList"></ul>
-  </div>
+      const snap = await get(child(ref(db), "users"));
+      if (!snap.exists()) return;
 
-  <!-- 매칭 통제 이동 -->
-  <div class="section">
-    <h2>⚔️ 매칭 통제</h2>
-    <button onclick="location.href='admin-match.html'">매칭 관리 이동</button>
-  </div>
+      const users = Object.entries(snap.val())
+        .filter(([uid, data]) => data.status === "approved" && uid.toLowerCase().includes(keyword));
 
-  <!-- 시즌 정보 관리 -->
-  <div class="section">
-    <h2>📅 시즌 정보 관리</h2>
-    <textarea id="seasonInput" rows="3" placeholder="시즌 설명 입력..."></textarea><br>
-    <button onclick="saveSeason()">시즌 저장</button>
-    <p id="seasonNotice"></p>
-  </div>
+      const totalPages = Math.ceil(users.length / pageSize);
+      totalPagesEl.innerText = totalPages;
+
+      const paginatedUsers = users.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+      listEl.innerHTML = "";
+      if (paginatedUsers.length === 0) {
+        listEl.innerHTML = "<li>등록된 유저 없음</li>";
+        return;
+      }
+
+      paginatedUsers.forEach(([uid, data]) => {
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <span>${uid} (${data.role || "user"})</span>
+          <button onclick="banUser('${uid}')" class="ban-btn">❌ 추방</button>
+        `;
+        listEl.appendChild(li);
+      });
+
+      pageNumberEl.innerText = currentPage;
+    }
+
+    // 페이지 이동
+    function changePage(direction) {
+      if (direction === "prev" && currentPage > 1) {
+        currentPage--;
+      } else if (direction === "next" && currentPage < parseInt(document.getElementById("totalPages").innerText)) {
+        currentPage++;
+      }
+      renderUserList();
+    }
+
+    renderUserList(); // 초기 로딩
+  </script>
 
   <!-- 로그아웃 -->
   <div class="section">
@@ -183,7 +264,6 @@
     <button onclick="logout()">로그아웃</button>
   </div>
 
-  <!-- 관리자용 스크립트 -->
   <script type="module" src="admin.js"></script>
 </body>
 </html>

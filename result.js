@@ -1,11 +1,21 @@
 import { db } from "./firebase.js";
-import { ref, get, set, update, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { ref, get, set, update, onValue, push } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // 로그인 체크
-const currentUser = sessionStorage.getItem("currentUser");
+const currentUser = localStorage.getItem("currentUser");
 if (!currentUser) {
   alert("로그인이 필요합니다.");
   location.href = "index.html";
+}
+
+// 매치 결과 저장 함수
+async function saveMatchResult(userId, team, result) {
+  const matchRef = push(ref(db, `history/${userId}`));
+  await set(matchRef, {
+    team: team,
+    result: result,
+    timestamp: Date.now()
+  });
 }
 
 // 변경 감지 플래그
@@ -18,7 +28,7 @@ const teamABox      = document.getElementById("teamA");
 const teamBBox      = document.getElementById("teamB");
 const submitBtn     = document.getElementById("submitResultBtn");
 const appealLink    = document.getElementById("appealLink");
-const matchIdDisplay = document.getElementById("matchIdDisplay");  // 매칭 ID 표시 요소 추가
+const matchIdDisplay = document.getElementById("matchIdDisplay");
 
 // 변경(change) 이벤트 감지
 document.addEventListener("change", e => {
@@ -56,17 +66,15 @@ async function loadRanking() {
   });
 }
 
-// 점수에 따른 글로우 클래스
 function getGlowClass(score) {
   if (score >= 3000) return "high-glow";
   if (score >= 2600) return "mid-upper-glow";
   if (score >= 2200) return "middle-glow";
   if (score >= 1800) return "lower-glow";
-  if (score >= 1200) return ""; // 기본 파랑
+  if (score >= 1200) return "";
   return "default-glow";
 }
 
-// 닉네임 렌더링 (점수+별 뒤에)
 function renderNickname(userId) {
   const info = rankingMap[userId];
   if (!info) return userId;
@@ -83,15 +91,13 @@ function renderNickname(userId) {
   return `<span class="${glowClass}">${userId} (${score}) ${stars}</span>`;
 }
 
-// 클랜명 조회
 async function fetchClan(userId) {
   const snap = await get(ref(db, `users/${userId}/clan`));
   return snap.exists() ? snap.val() : "미소속";
 }
 
-// 매칭 불러오기 및 렌더링
 async function loadAndRenderMatch() {
-  await loadRanking(); // 랭킹 먼저 불러오기
+  await loadRanking();
 
   const snap = await get(ref(db, "currentMatch"));
   if (!snap.exists()) {
@@ -100,9 +106,7 @@ async function loadAndRenderMatch() {
   }
   const { id, map, teamA, teamB } = snap.val();
 
-  // 매칭 ID 표시
-  matchIdDisplay.textContent = `매칭 ID: ${id}`;  // 매칭 ID 화면에 표시
-
+  matchIdDisplay.textContent = `매칭 ID: ${id}`;
   mapCenter.textContent = `맵: ${map}`;
 
   const captainA = teamA[0];
@@ -133,11 +137,9 @@ async function loadAndRenderMatch() {
     container.appendChild(ul);
   }
 
-  // 팀 A / B 렌더
   await makeTeamBox(teamA, teamABox, "resultA", captainA);
   await makeTeamBox(teamB, teamBBox, "resultB", captainB);
 
-  // 제출 버튼 제어
   if (!isCaptain) {
     submitBtn.disabled = true;
     submitBtn.textContent = "팀장만 결과 입력 가능";
@@ -152,7 +154,6 @@ async function loadAndRenderMatch() {
         return alert("팀장 승패를 모두 선택해주세요.");
       }
 
-      // 1) 결과 저장
       await set(ref(db, `matchResults/${id}`), {
         map,
         teamA, resultA: resA,
@@ -160,27 +161,24 @@ async function loadAndRenderMatch() {
         timestamp: new Date().toISOString()
       });
 
-      // 2) 점수 반영
       const delta = 100;
       const updates = {};
       for (let u of teamA) {
         const oldSnap = await get(ref(db, `users/${u}/score`));
         const oldScore = oldSnap.exists() ? oldSnap.val() : 1000;
         updates[`users/${u}/score`] = oldScore + (resA === "win" ? delta : -delta);
+
+        await saveMatchResult(u, "A", resA);
       }
       for (let u of teamB) {
         const oldSnap = await get(ref(db, `users/${u}/score`));
         const oldScore = oldSnap.exists() ? oldSnap.val() : 1000;
         updates[`users/${u}/score`] = oldScore + (resB === "win" ? delta : -delta);
+
+        await saveMatchResult(u, "B", resB);
       }
       await update(ref(db), updates);
 
-      // 3) 로컬 히스토리 기록
-      const history = JSON.parse(localStorage.getItem("matchHistory") || "[]");
-      history.push({ id, map, teamA, teamB, resultA: resA, resultB: resB, timestamp: Date.now() });
-      localStorage.setItem("matchHistory", JSON.stringify(history));
-
-      // 완료 후 이동
       isDirty = false;
       window.onbeforeunload = null;
       alert("✅ 결과가 저장되었습니다.");
@@ -188,13 +186,11 @@ async function loadAndRenderMatch() {
     };
   }
 
-  // 이의제기 클릭 시 dirty 해제
   appealLink.addEventListener("click", () => {
     appealLink.dataset.clicked = "true";
     isDirty = false;
   });
 
-  // DB에 결과가 생기면 자동 이동
   onValue(ref(db, `matchResults/${id}`), snapRes => {
     if (snapRes.exists()) {
       isDirty = false;

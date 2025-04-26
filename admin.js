@@ -8,7 +8,11 @@ import {
   query,
   orderByChild,
   equalTo,
+  child,
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+let currentPage = 1;
+const pageSize = 5;
 
 // 🔐 관리자 확인
 const currentUser = localStorage.getItem("currentUser");
@@ -22,34 +26,59 @@ get(ref(db, `users/${currentUser}`)).then((snap) => {
     renderPendingUsers();
     renderNotices();
     renderDisputes();
+    renderSeasonInfo();
   }
 });
 
-// ✅ 차단된 유저 목록
-function renderBlockedUsers() {
-  const ul = document.getElementById("blockedUsers");
-  ul.innerHTML = "";
+// ✅ 회원 목록 출력
+window.renderUserList = async () => {
+  const keyword = document.getElementById("searchUser")?.value?.toLowerCase() || "";
+  const listEl = document.getElementById("userList");
+  const snap = await get(child(ref(db), "users"));
 
-  const blockedUsersQuery = query(ref(db, "users"), orderByChild("isBlocked"), equalTo(true));
-  get(blockedUsersQuery).then((snap) => {
-    if (!snap.exists()) return;
-    const users = snap.val();
-    Object.entries(users).forEach(([uid]) => {
-      const li = document.createElement("li");
-      li.innerHTML = `
-        <span>${uid}</span>
-        <button onclick="unblockUser('${uid}')" class="ban-btn">차단 해제</button>
-      `;
-      ul.appendChild(li);
-    });
+  if (!snap.exists()) return;
+
+  const users = Object.entries(snap.val()).filter(
+    ([uid, data]) => data.status === "approved" && uid.toLowerCase().includes(keyword)
+  );
+
+  const totalPages = Math.ceil(users.length / pageSize);
+  document.getElementById("totalPages").innerText = totalPages;
+
+  const paginatedUsers = users.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  listEl.innerHTML = "";
+  if (paginatedUsers.length === 0) {
+    listEl.innerHTML = "<li>등록된 유저 없음</li>";
+    return;
+  }
+
+  paginatedUsers.forEach(([uid, data]) => {
+    const li = document.createElement("li");
+    li.innerHTML = `<span>${uid} (${data.role || "user"})</span>
+      <button onclick="banUser('${uid}')" class="ban-btn">❌ 추방</button>`;
+    listEl.appendChild(li);
   });
-}
 
-// ✅ 차단 해제
-window.unblockUser = async (uid) => {
-  await update(ref(db, `users/${uid}`), { isBlocked: false });
-  alert(`${uid} 님 차단 해제됨`);
-  renderBlockedUsers();
+  document.getElementById("pageNumber").innerText = currentPage;
+  document.getElementById("prevPage").disabled = currentPage === 1;
+  document.getElementById("nextPage").disabled = currentPage === totalPages;
+};
+
+// ✅ 페이지 이동
+window.changePage = (direction) => {
+  const totalPages = parseInt(document.getElementById("totalPages").innerText);
+  if (direction === "prev" && currentPage > 1) {
+    currentPage--;
+  } else if (direction === "next" && currentPage < totalPages) {
+    currentPage++;
+  }
+  renderUserList();
+};
+
+// ✅ 검색 시 페이지 초기화
+window.searchUserList = () => {
+  currentPage = 1;
   renderUserList();
 };
 
@@ -62,39 +91,36 @@ window.banUser = async (uid) => {
   renderUserList();
 };
 
-// ✅ 회원 목록 (승인된 유저만)
-window.renderUserList = () => {
-  const listEl = document.getElementById("userList");
-  const keyword = document.getElementById("searchUser")?.value?.toLowerCase() || "";
+// ✅ 차단 해제
+window.unblockUser = async (uid) => {
+  await update(ref(db, `users/${uid}`), { isBlocked: false });
+  alert(`${uid} 님 차단 해제됨`);
+  renderBlockedUsers();
+  renderUserList();
+};
 
-  get(ref(db, "users")).then((snap) => {
+// ✅ 차단된 유저 목록
+function renderBlockedUsers() {
+  const ul = document.getElementById("blockedUsers");
+  ul.innerHTML = "";
+
+  const blockedUsersQuery = query(ref(db, "users"), orderByChild("isBlocked"), equalTo(true));
+  get(blockedUsersQuery).then((snap) => {
     if (!snap.exists()) return;
-    const users = Object.entries(snap.val())
-      .filter(([uid, data]) =>
-        data.status === "approved" &&
-        uid.toLowerCase().includes(keyword)
-      );
-
-    listEl.innerHTML = "";
-    if (users.length === 0) {
-      listEl.innerHTML = "<li>등록된 유저 없음</li>";
-      return;
-    }
-
-    users.forEach(([uid, data]) => {
+    const users = snap.val();
+    Object.entries(users).forEach(([uid]) => {
       const li = document.createElement("li");
-      li.innerHTML = `
-        <span>${uid} (${data.role || "user"})</span>
-        <button onclick="banUser('${uid}')" class="ban-btn">❌ 추방</button>
-      `;
-      listEl.appendChild(li);
+      li.innerHTML = `<span>${uid}</span>
+        <button onclick="unblockUser('${uid}')" class="ban-btn">차단 해제</button>`;
+      ul.appendChild(li);
     });
   });
-};
+}
 
 // ✅ 가입 대기자 목록
 function renderPendingUsers() {
   const ul = document.getElementById("pendingUsers");
+  if (!ul) return;
   ul.innerHTML = "";
 
   get(ref(db, "users")).then((snap) => {
@@ -103,11 +129,9 @@ function renderPendingUsers() {
     Object.entries(users).forEach(([uid, user]) => {
       if (user.status === "pending") {
         const li = document.createElement("li");
-        li.innerHTML = `
-          <span>${uid} (${user.status})</span>
+        li.innerHTML = `<span>${uid} (${user.status})</span>
           <button onclick="approveUser('${uid}')">승인</button>
-          <button onclick="rejectUser('${uid}')">거절</button>
-        `;
+          <button onclick="rejectUser('${uid}')">거절</button>`;
         ul.appendChild(li);
       }
     });
@@ -130,21 +154,11 @@ window.rejectUser = async (uid) => {
 };
 
 // ✅ 공지사항 관리
-document.getElementById("noticeForm").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const content = document.getElementById("noticeContent").value.trim();
-  if (!content) return alert("공지 내용을 입력하세요.");
-  const snap = await get(ref(db, "notices"));
-  const notices = snap.exists() ? snap.val() : [];
-  notices.push(content);
-  await set(ref(db, "notices"), notices);
-  document.getElementById("noticeContent").value = "";
-  renderNotices();
-});
-
 function renderNotices() {
   const ul = document.getElementById("noticeList");
+  if (!ul) return;
   ul.innerHTML = "";
+
   get(ref(db, "notices")).then((snap) => {
     if (!snap.exists()) return;
     snap.val().slice().reverse().forEach((text, i) => {
@@ -164,9 +178,22 @@ window.deleteNotice = async (index) => {
   renderNotices();
 };
 
+document.getElementById("noticeForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const content = document.getElementById("noticeContent").value.trim();
+  if (!content) return alert("공지 내용을 입력하세요.");
+  const snap = await get(ref(db, "notices"));
+  const notices = snap.exists() ? snap.val() : [];
+  notices.push(content);
+  await set(ref(db, "notices"), notices);
+  document.getElementById("noticeContent").value = "";
+  renderNotices();
+});
+
 // ✅ 이의제기 관리
 function renderDisputes() {
   const tbody = document.getElementById("disputeList");
+  if (!tbody) return;
   tbody.innerHTML = "";
 
   get(ref(db, "matchDisputes")).then((snap) => {
@@ -206,6 +233,20 @@ window.resolveDispute = async (matchId) => {
   alert("이의제기 해결됨");
   renderDisputes();
 };
+
+// ✅ 시즌 정보 출력
+function renderSeasonInfo() {
+  const seasonInfoElement = document.getElementById("seasonInfo");
+  if (!seasonInfoElement) return;
+
+  get(ref(db, "seasonInfo")).then((snap) => {
+    if (!snap.exists()) {
+      seasonInfoElement.innerText = "시즌 정보가 없습니다.";
+    } else {
+      seasonInfoElement.innerText = snap.val();
+    }
+  });
+}
 
 // ✅ 시즌 저장
 window.saveSeason = () => {
