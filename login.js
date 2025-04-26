@@ -71,10 +71,24 @@ async function login() {
       return;
     }
 
-    // ✅ 로그인 완료 (localStorage로 변경)
+    // ✅ 로그인 완료 (localStorage 저장)
     localStorage.setItem("currentUser", id);
     alert("🎉 로그인 성공!");
-    location.href = user.role === "admin" ? "admin.html" : "main.html";
+
+    // 사용자 정보를 다시 불러오기
+    const userSnapshot = await get(child(ref(db), `users/${id}`));
+    if (userSnapshot.exists()) {
+      const user = userSnapshot.val();
+      
+      // 사용자 역할에 따라 페이지 이동
+      if (user.role === "admin") {
+        window.location.href = "admin.html";
+      } else {
+        window.location.href = "main.html";
+      }
+    } else {
+      alert("사용자 정보 로드 실패");
+    }
 
   } catch (error) {
     console.error("로그인 오류:", error);
