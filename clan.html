@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>HORST 클랜 관리</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
@@ -11,6 +11,7 @@
       font-family: 'Orbitron', sans-serif;
       text-align: center;
       margin: 0;
+      padding: 0;
     }
     body::before {
       content: "";
@@ -29,9 +30,9 @@
       100% { background-position: 0% 50%; }
     }
     h1 {
-      color: #7b2ff7;
-      font-size: 2rem;
       margin-top: 40px;
+      font-size: 2rem;
+      color: #7b2ff7;
       text-shadow: 0 0 10px #7b2ff7;
     }
     .box {
@@ -44,24 +45,18 @@
       margin: 30px auto;
       padding: 30px;
     }
-    ul {
-      list-style: none;
-      padding: 0;
-      text-align: left;
-    }
-    li {
-      background: #1e1e1e;
+    input, select {
       padding: 10px;
-      margin-bottom: 8px;
-      border: 1px solid #00f2ff;
+      width: 80%;
+      max-width: 400px;
+      margin-top: 10px;
       border-radius: 8px;
-      width: 90%;
-      max-width: 520px;
-      box-shadow: 0 0 8px rgba(0, 242, 255, 0.2);
+      border: 1px solid #7b2ff7;
+      font-size: 1rem;
     }
     button {
       padding: 10px 20px;
-      margin: 10px 5px;
+      margin: 10px;
       background: linear-gradient(90deg, #00f2ff, #7b2ff7);
       color: black;
       font-weight: bold;
@@ -74,50 +69,88 @@
       transform: scale(1.05);
       opacity: 0.95;
     }
-  </style>
-  <script type="module">
-    import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
-    import { database } from './firebase.js';
-
-    const currentUser = localStorage.getItem("currentUser");
-    const pendingList = document.getElementById("pendingList");
-
-    const clansRef = ref(database, 'clans');
-    const usersRef = ref(database, 'users');
-
-    async function renderRequests() {
-      pendingList.innerHTML = "";
-      const snapshot = await get(clansRef);
-      const userSnap = await get(ref(database, `users/${currentUser}`));
-      if (!snapshot.exists() || !userSnap.exists()) return;
-
-      const clanData = snapshot.val();
-      const user = userSnap.val();
-      const myClan = user.clan;
-
-      Object.entries(clanData).forEach(([clanName, data]) => {
-        const li = document.createElement("li");
-        li.innerHTML = ` 
-          <strong><a href="clan-detail.html?clanName=${clanName}">${clanName}</a></strong><br>
-          클랜장: ${data.leader}<br>
-          구성원: ${(data.members || []).join(", ")}<br>
-          신청자 수: ${data.members.length}/5<br> 
-        `;
-        pendingList.appendChild(li);
-      });
+    ul {
+      list-style: none;
+      padding: 0;
     }
-
-    renderRequests();
-  </script>
+    li {
+      background: #1e1e1e;
+      margin-bottom: 8px;
+      padding: 12px;
+      border: 1px solid #00f2ff;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    .leader {
+      border: 2px solid gold;
+      box-shadow: 0 0 10px gold;
+    }
+    .next-button {
+      margin-top: 20px;
+      font-size: 1.2rem;
+      padding: 10px 30px;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
+
 <body>
   <h1>🏰 HORST 클랜 관리</h1>
-  <div class="box">
-    <h2>🔍 클랜 목록</h2>
-    <ul id="pendingList">로딩 중...</ul>
+
+  <!-- ✅ 메인 화면 -->
+  <div id="mainSection">
+    <div class="box">
+      <h2>📝 클랜 가입 신청</h2>
+      <input type="text" id="clanNameInput" placeholder="희망 클랜 이름 입력">
+      <br>
+      <button onclick="applyToClan()">✅ 신청하기</button>
+    </div>
+
+    <div class="box">
+      <h2>👥 현재 클랜원 목록</h2>
+      <ul id="clanMembersList">로딩 중...</ul>
+      <button id="nextButton" class="next-button hidden" onclick="showManageSection()">>> 클랜 관리 화면으로 이동</button>
+    </div>
+
+    <div class="box">
+      <button onclick="location.href='main.html'">🔙 메인으로 돌아가기</button>
+    </div>
   </div>
-  <div class="box">
-    <button onclick="location.href='main.html'">🔙 메인으로 돌아가기</button>
+
+  <!-- ✅ 클랜 관리 화면 -->
+  <div id="manageSection" class="hidden">
+    <div class="box">
+      <h2>👥 클랜원 관리</h2>
+      <ul id="manageMembersList">로딩 중...</ul>
+    </div>
+
+    <div id="leaderActions" class="box hidden">
+      <h2>👑 클랜장 전용 기능</h2>
+      <h3>가입 승인 / 거절</h3>
+      <ul id="pendingList">로딩 중...</ul>
+
+      <h3>클랜장 양도</h3>
+      <select id="transferTarget"></select>
+      <button onclick="transferLeadership()">양도</button>
+
+      <h3>클랜 해체</h3>
+      <button onclick="disbandClan()">🧨 클랜 해체</button>
+    </div>
+
+    <div id="memberActions" class="box hidden">
+      <h2>🙋 클랜원 전용 기능</h2>
+      <button onclick="leaveClan()">🚪 클랜 탈퇴</button>
+    </div>
+
+    <div class="box">
+      <button onclick="showMainSection()">🔙 메인 화면으로 돌아가기</button>
+    </div>
   </div>
+
+  <!-- JS 연결 -->
+  <script type="module" src="clan.js"></script>
+
 </body>
 </html>
