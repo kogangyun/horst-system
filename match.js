@@ -1,5 +1,5 @@
-import { db } from "./firebase.js"; // Firebase 연동이 필요한 경우 대비
-// 현재는 localStorage 기반으로 동작
+import { db } from "./firebase.js"; // Firebase 연동
+import { ref, get, set, update, remove, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 const currentUser = localStorage.getItem("currentUser");
 if (!currentUser) {
@@ -7,8 +7,6 @@ if (!currentUser) {
   location.href = "index.html";
 }
 
-const userScores = JSON.parse(localStorage.getItem("userScores") || "{}");
-let queue = JSON.parse(localStorage.getItem("matchQueue") || "[]");
 let timerInterval = null;
 let elapsedSeconds = 0;
 
@@ -17,34 +15,31 @@ const maps = [
   "브락시스 항전", "파멸의 탑", "볼스카야 공장", "저주의 골짜기", "거미 여왕의 무덤"
 ];
 
-// DOM 요소 초기 접근
+// DOM 요소 접근
 const statusText = document.getElementById("statusText");
 const timerBox = document.getElementById("timer");
 const resultBox = document.getElementById("matchResult");
 
-// 페이지 진입 시 상태 초기화
-updateStatus();
-if (queue.includes(currentUser)) {
-  startTimer();
+// 점수 초기화 (localStorage -> Firebase로 나중에 확장 가능)
+const userScores = JSON.parse(localStorage.getItem("userScores") || "{}");
+if (!(currentUser in userScores)) {
+  userScores[currentUser] = 1000;
+  localStorage.setItem("userScores", JSON.stringify(userScores));
 }
 
-window.joinMatch = () => {
-  if (!currentUser) return alert("로그인이 필요합니다.");
-  if (queue.includes(currentUser)) return alert("이미 대기 중입니다.");
-  if (localStorage.getItem("matchingPaused") === "true") return alert("매칭이 일시 중단되었습니다.");
+// 매칭 대기열 상태 업데이트
+async function updateStatus() {
+  const snap = await get(ref(db, "matchQueue"));
+  const queue = snap.exists() ? Object.values(snap.val()) : [];
 
-  queue.push(currentUser);
-  localStorage.setItem("matchQueue", JSON.stringify(queue));
-  updateStatus();
-  startTimer();
-};
-
-function updateStatus() {
   if (statusText) statusText.innerText = `현재 ${queue.length}/10명 대기 중...`;
 
   if (queue.length >= 10) {
     clearInterval(timerInterval);
     timerInterval = null;
+
+    // ✅ 매칭 성사시 사운드 재생
+    matchSound.play().catch(console.error);
 
     const players = queue.slice(0, 10);
     const map = maps[Math.floor(Math.random() * maps.length)];
@@ -60,11 +55,15 @@ function updateStatus() {
       results: {},
     };
 
-    queue = queue.slice(10);
-    localStorage.setItem("matchQueue", JSON.stringify(queue));
-    localStorage.setItem("currentMatch", JSON.stringify(matchData));
+    // 매칭 완료된 10명 대기열에서 제거
+    for (const player of players) {
+      await remove(ref(db, `matchQueue/${player.name}`));
+    }
 
-    saveMatch(matchData);
+    // 매칭 결과 저장
+    await set(ref(db, `matches/${matchId}`), matchData);
+    await set(ref(db, `matchHistory/${matchId}`), matchData);
+
     showMatchResult(matchData);
 
     if (statusText) statusText.innerText = "3초 후 결과 입력 화면으로 이동합니다...";
@@ -74,10 +73,10 @@ function updateStatus() {
   }
 }
 
+// 매칭 대기 시작
 function startTimer() {
   if (timerInterval) return; // 중복 방지
   elapsedSeconds = 0;
-
   if (timerBox) timerBox.innerText = `경과 시간: 0초`;
 
   timerInterval = setInterval(() => {
@@ -87,10 +86,11 @@ function startTimer() {
   }, 1000);
 }
 
+// 팀 균형 맞추기
 function createBalancedTeams(players) {
   const scored = players.map(name => ({
-    name,
-    score: userScores[name] || 1000
+    name: name.name, // player 객체에 name 속성 있음
+    score: userScores[name.name] || 1000
   })).sort((a, b) => b.score - a.score);
 
   const teamA = [], teamB = [];
@@ -107,6 +107,7 @@ function createBalancedTeams(players) {
   return { teamA, teamB };
 }
 
+// 매칭 결과 보여주기
 function showMatchResult(match) {
   if (!resultBox) return;
   resultBox.innerHTML = `
@@ -117,14 +118,22 @@ function showMatchResult(match) {
   `;
 }
 
-function saveMatch(matchData) {
-  const matchHistory = JSON.parse(localStorage.getItem("matchHistory") || "[]");
-  matchHistory.push(matchData);
-  localStorage.setItem("matchHistory", JSON.stringify(matchHistory));
-}
+// 매칭 대기열 참가
+window.joinMatch = async () => {
+  if (!currentUser) return alert("로그인이 필요합니다.");
 
-// 초기 점수 없을 경우 기본값 설정
-if (!(currentUser in userScores)) {
-  userScores[currentUser] = 1000;
-  localStorage.setItem("userScores", JSON.stringify(userScores));
-}
+  const snap = await get(ref(db, "matchQueue"));
+  const queue = snap.exists() ? Object.keys(snap.val()) : [];
+
+  if (queue.includes(currentUser)) return alert("이미 대기 중입니다.");
+  if (localStorage.getItem("matchingPaused") === "true") return alert("매칭이 일시 중단되었습니다.");
+
+  await update(ref(db, `matchQueue/${currentUser}`), {
+    name: currentUser,
+    joinedAt: Date.now(),
+  });
+
+  updateStatus();
+  startTimer();
+};
+
