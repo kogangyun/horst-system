@@ -216,36 +216,24 @@ window.resolveDispute = async (matchId) => {
   renderDisputes();
 };
 
-// 시즌 추가
-
+// 시즌 추가 (✅ 기존 데이터 무조건 덮어쓰기)
 document.getElementById("seasonForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const val = document.getElementById("seasonInput").value.trim();
   if (!val) return alert("내용을 입력해주세요.");
 
-  const snap = await get(ref(db, "notices"));
-  const arr = snap.exists() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : [];
-
-  arr.push(val);
-  await set(ref(db, "notices"), arr);
-
+  await set(ref(db, "notices"), [val]); // ✅ 새 시즌 1줄만 저장
   document.getElementById("seasonInput").value = "";
   renderNotices();
 });
 
-// 공지 추가
-
+// 공지 추가 (✅ 기존 데이터 무조건 덮어쓰기)
 document.getElementById("noticeForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const val = document.getElementById("noticeContent").value.trim();
   if (!val) return alert("내용을 입력해주세요.");
 
-  const snap = await get(ref(db, "notices"));
-  const arr = snap.exists() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : [];
-
-  arr.push(val);
-  await set(ref(db, "notices"), arr);
-
+  await set(ref(db, "notices"), [val]); // ✅ 새 공지 1줄만 저장
   document.getElementById("noticeContent").value = "";
   renderNotices();
 });
