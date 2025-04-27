@@ -243,10 +243,13 @@ document.addEventListener("DOMContentLoaded", () => {
     if (!confirm("정말 포인트를 1000점으로 초기화할까요?")) return;
     const snap = await get(ref(db, "users"));
     if (!snap.exists()) return;
+
     const updates = {};
     Object.keys(snap.val()).forEach(uid => {
       updates[`users/${uid}/points`] = 1000;
+      updates[`users/${uid}/score`] = 1000;
     });
+
     await update(ref(db), updates);
     alert("✅ 모든 유저 포인트가 1000점으로 초기화되었습니다.");
     renderUserList();
@@ -257,4 +260,4 @@ document.addEventListener("DOMContentLoaded", () => {
   if (hardResetBtn) {
     hardResetBtn.addEventListener("click", window.hardResetPoints);
   }
-});
+}); // 딱 여기 하나만 닫기
