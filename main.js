@@ -143,27 +143,49 @@ function updateTournamentCountdown() {
   target.setDate(now.getDate() + toFriday);
   target.setHours(19,0,0,0);
   const diff = target - now;
-  const d = Math.floor(diff/(1000*60*60*24));
-  const h = Math.floor(diff%(1000*60*60*24)/(1000*60*60));
-  const m = Math.floor(diff%(1000*60*60)/(1000*60));
-  const s = Math.floor(diff%(1000*60)/1000);
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const h = Math.floor(diff % (1000 * 60 * 60 * 24) / (1000 * 60 * 60));
+  const m = Math.floor(diff % (1000 * 60 * 60) / (1000 * 60));
+  const s = Math.floor(diff % (1000 * 60) / 1000);
   tournamentTime.innerText = `매주 금요일 19:00까지: ${d}일 ${h}시간 ${m}분 ${s}초`;
 }
 setInterval(updateTournamentCountdown, 1000);
 updateTournamentCountdown();
 
-// 토너먼트 참가/취소
+// 토너먼트 참가
 window.joinTournament = async () => {
   const snap = await get(ref(db, "tournament/participants"));
   const parts = snap.exists() ? snap.val() : {};
   if (parts[currentUser]) return alert("이미 신청됨");
   if (Object.keys(parts).length >= 20) return alert("정원 초과");
-  await update(ref(db, `tournament/participants/${currentUser}`), { name: currentUser, joinedAt: Date.now() });
-  // 사운드 재생
-  matchSound.play().catch(console.error);
+
+  await update(ref(db, `tournament/participants/${currentUser}`), {
+    name: currentUser,
+    joinedAt: Date.now(),
+  });
+
+  // ✅ matchSound.play() 삭제 완료
   alert("✅ 토너먼트 참가 완료!");
 };
+
+// 토너먼트 참가 취소
 window.cancelTournament = async () => {
   await set(ref(db, `tournament/participants/${currentUser}`), null);
   alert("✅ 참가 취소 완료!");
 };
+
+// ✅ 여기 추가: 토너먼트 매칭 성사 감지 (내 이름 포함되면 소리)
+import { onChildAdded } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+onChildAdded(ref(db, "tournament/matches"), (snap) => {
+  const matchData = snap.val();
+  if (!matchData) return;
+
+  const teamA = matchData.teamA || [];
+  const teamB = matchData.teamB || [];
+
+  // ✅ currentUser가 이번 매칭에 포함되면 소리 재생
+  if (teamA.includes(currentUser) || teamB.includes(currentUser)) {
+    matchSound.play().catch(console.error);
+  }
+});
