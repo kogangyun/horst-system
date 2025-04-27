@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>🏆 HORST 토너먼트 대진표</title>
+  <title>HORST 토너먼트</title>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
   <style>
     body {
@@ -12,209 +12,155 @@
       text-align: center;
       padding: 20px;
     }
-
-    h2 {
-      color: #00f2ff;
-      text-shadow: 0 0 5px #00f2ff;
-      margin-bottom: 10px;
+    .tournament-container {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
     }
-
-    .match {
+    .team-card {
       background: #1a1a1a;
       border: 2px solid #7b2ff7;
       border-radius: 15px;
       padding: 20px;
-      margin: 20px auto;
-      width: 90%;
-      max-width: 600px;
-      box-shadow: 0 0 20px rgba(123, 47, 247, 0.3);
+      width: 220px;
+      min-height: 220px;
+      box-shadow: 0 0 20px rgba(123, 47, 247, 0.4);
+      position: relative;
     }
-
-    .match p {
-      margin: 10px 0;
+    .team-title {
+      font-weight: bold;
+      color: #00f2ff;
+      margin-bottom: 10px;
+      font-size: 20px;
     }
-
-    .winner-button {
-      padding: 12px 20px;
+    .player-info {
+      margin: 5px 0;
+      font-size: 14px;
+    }
+    .captain-star {
+      color: #ffd700;
+      font-weight: bold;
+    }
+    .skull {
+      font-size: 50px;
+      color: red;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      opacity: 0.8;
+      pointer-events: none;
+    }
+    .win-lose-btns {
+      margin-top: 10px;
+    }
+    .btn {
       margin: 5px;
+      padding: 8px 16px;
       background: linear-gradient(90deg, #00f2ff, #7b2ff7);
+      border: none;
+      border-radius: 10px;
       color: black;
       font-weight: bold;
-      border: none;
-      border-radius: 10px;
       cursor: pointer;
-      transition: 0.2s;
     }
-
-    .winner-button:hover {
-      transform: scale(1.05);
-      opacity: 0.9;
+    .btn:hover {
+      opacity: 0.8;
     }
-
-    .disabled {
-      background: gray !important;
-      cursor: not-allowed;
+    .footer {
+      margin-top: 40px;
     }
-
-    .map-info {
-      font-size: 16px;
-      margin-top: 10px;
-      color: #ffaa00;
-    }
-
-    .register-btn {
-      margin-top: 20px;
-      background: linear-gradient(90deg, #00f2ff, #7b2ff7);
+    .kakao-btn {
+      background: gold;
+      color: black;
       padding: 12px 24px;
+      font-size: 16px;
+      font-weight: bold;
       border: none;
       border-radius: 10px;
-      font-weight: bold;
-      font-size: 1.2rem;
       cursor: pointer;
-      transition: 0.2s;
     }
-
-    .register-btn:hover {
-      transform: scale(1.05);
-      opacity: 0.9;
+    .kakao-btn:hover {
+      background: #ffd700;
     }
-  </style>
+    .notice {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #aaa;
+    }
+  </style>  
 </head>
 <body>
-  <h2>🏆 4강 토너먼트 대진표</h2>
-  <div id="tournamentInfo">토너먼트 정보를 불러오는 중...</div>
+  <h1>🏆 HORST 토너먼트</h1>
 
-  <div id="bracket">로딩 중...</div>
+  <p style="margin-bottom: 20px; font-size: 16px; color: #ccc;">
+    매치는 <strong>A/B팀</strong> vs <strong>C/D팀</strong> 으로 진행합니다.<br>
+    각 팀장은 <strong>패배 시 '패배' 버튼</strong>을 눌러주세요.<br>
+    최종 승리자는 <strong>아래 오픈카톡 링크를 눌러 선물 요청</strong>을 해주세요.<br>
+    이의제기 시에도 <strong>오픈카톡 링크</strong>를 통해 접수합니다.<br>
+    <span style="color: #ff6666;">※ 이의제기 중에는 매치를 진행할 수 없으며, 매치 진행 시 몰수패 처리됩니다.</span>
+  </p>
 
-  <!-- 토너먼트 참가 버튼 -->
-  <button id="registerBtn" class="register-btn">토너먼트 참가</button>
+  <div class="tournament-container" id="tournament">
+    <!-- 팀 카드 삽입 위치 -->
+  </div>
 
-  <script type="module">
-    import { db } from './firebase.js';
-    import { ref, get, set, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+  <div class="footer">
+    <button class="kakao-btn" onclick="window.open('https://open.kakao.com/o/yourlink', '_blank')">
+      오픈카톡 문의하기
+    </button>
+  </div>
 
-    const bracket = document.getElementById("bracket");
-    const tournamentInfo = document.getElementById("tournamentInfo");
-    const currentUser = localStorage.getItem("currentUser");
+  <script>
+    const teams = [
+      { name: "A팀", players: ["player1", "player2", "player3", "player4", "player5"], captain: "player1" },
+      { name: "B팀", players: ["player6", "player7", "player8", "player9", "player10"], captain: "player6" },
+      { name: "C팀", players: ["player11", "player12", "player13", "player14", "player15"], captain: "player11" },
+      { name: "D팀", players: ["player16", "player17", "player18", "player19", "player20"], captain: "player16" }
+    ];
 
-    let tournamentData = {};
+    const user = localStorage.getItem('currentUser') || 'player1'; 
+    const tournamentDiv = document.getElementById('tournament');
 
-    // 토너먼트 정보 초기화
-    async function initializeTournament() {
-      const now = new Date();
-      const snap = await get(ref(db, "tournament"));
-      const data = snap.val();
+    teams.forEach((team, index) => {
+      const card = document.createElement('div');
+      card.className = 'team-card';
+      card.id = `team-${index}`;
 
-      if (!data || new Date(data.startTime) <= now || data.status === "ended") {
-        // 새로운 토너먼트 시작 (매주 금요일 오후 7시)
-        const nextFriday = new Date();
-        nextFriday.setDate(now.getDate() + ((12 - now.getDay()) % 7)); // 다음 금요일로 설정
-        nextFriday.setHours(19, 0, 0, 0);
-
-        const mapList = [
-          "영원의 전쟁터", "용의 둥지", "하늘 사원",
-          "브락시스 항전", "파멸의 탑", "볼스카야 공장",
-          "저주의 골짜기", "거미 여왕의 무덤"
-        ];
-        const newMap = mapList[Math.floor(Math.random() * mapList.length)];
-
-        tournamentData = {
-          startTime: nextFriday.toISOString(),
-          status: "open",
-          participants: [], // 참가자 리스트 초기화
-          map: newMap,
-          teams: null, // 팀 정보 초기화
-          matches: null // 매칭 정보 초기화
-        };
-
-        await set(ref(db, "tournament"), tournamentData);
-      } else {
-        tournamentData = data;  // 기존 토너먼트 데이터 로드
-      }
-    }
-
-    // 토너먼트 정보 표시
-    function displayTournamentInfo() {
-      const startTime = new Date(tournamentData.startTime);
-      const now = new Date();
-      const diffMs = startTime - now;
-      const remaining = `${Math.floor(diffMs / (1000 * 60 * 60 * 24))}일 ${Math.floor(diffMs / (1000 * 60 * 60)) % 24}시간 ${(Math.floor(diffMs / (1000 * 60)) % 60)}분 ${(Math.floor(diffMs / 1000) % 60)}초`;
-
-      tournamentInfo.innerHTML = `
-        <p>📍 토너먼트 맵: <strong>${tournamentData.map}</strong></p>
-        <p>⏰ 시작까지 남은 시간: <strong>${remaining}</strong></p>
-        <p>👥 현재 참가자 수: <strong>${tournamentData.participants.length}</strong>/20</p>
-      `;
-    }
-
-    // 참가 신청
-    async function registerForTournament() {
-      if (tournamentData.status !== "open") {
-        alert("현재 토너먼트는 진행 중이거나 종료되었습니다.");
-        return;
-      }
-
-      if (tournamentData.participants.includes(currentUser)) {
-        alert("이미 참가한 토너먼트입니다.");
-        return;
-      }
-
-      tournamentData.participants.push(currentUser);
-      await update(ref(db, "tournament"), { participants: tournamentData.participants });
-      alert("토너먼트에 참가 신청되었습니다!");
-      displayTournamentInfo();
-    }
-
-    // 토너먼트 대진표 출력
-    function renderBracket() {
-      if (!tournamentData.teams) return;
-
-      const teams = tournamentData.teams;
-      const matches = tournamentData.matches;
-
-      bracket.innerHTML = `
-        <h3>🎮 토너먼트 대진표</h3>
-        <p>🌍 맵: ${tournamentData.map}</p>
-      `;
-
-      Object.keys(matches).forEach(matchKey => {
-        const match = matches[matchKey];
-        const teamA = teams[match.team1];
-        const teamB = teams[match.team2];
-        const winner = match.winner ? `✅ 승리팀: ${match.winner}` : "❓ 승리팀 미선택";
-
-        const matchHTML = `
-          <div class="match">
-            <p><strong>${teamA.join(", ")}</strong> vs <strong>${teamB.join(", ")}</strong></p>
-            <p>${winner}</p>
-            <button class="winner-button" onclick="reportWinner('${matchKey}', '${match.team1}')">승리: ${teamA.join(", ")}</button>
-            <button class="winner-button" onclick="reportWinner('${matchKey}', '${match.team2}')">승리: ${teamB.join(", ")}</button>
-          </div>
-        `;
-
-        bracket.innerHTML += matchHTML;
+      let html = `<div class="team-title">${team.name}</div>`;
+      team.players.forEach(p => {
+        const isCaptain = p === team.captain ? '<span class="captain-star">⭐</span>' : '';
+        html += `<div class="player-info">${p} ${isCaptain}</div>`;
       });
-    }
 
-    // 승리 팀 보고
-    async function reportWinner(matchKey, winningTeam) {
-      if (!confirm(`${winningTeam} 팀이 승리 팀으로 확정되면 토너먼트가 종료됩니다. 계속하시겠습니까?`)) return;
+      // 팀장에게만 승/패 버튼 노출
+      if (user === team.captain) {
+        html += `
+          <div class="win-lose-btns">
+            <button class="btn" onclick="markResult(${index}, 'win')">승리</button>
+            <button class="btn" onclick="markResult(${index}, 'lose')">패배</button>
+          </div>`;
+      }
 
-      await update(ref(db, `tournament/matches/${matchKey}`), { winner: winningTeam });
-      alert(`${winningTeam} 팀 승리로 기록되었습니다.`);
-      renderBracket();
-    }
-
-    // 토너먼트 참가 버튼 클릭 시
-    document.getElementById("registerBtn").addEventListener("click", async () => {
-      await registerForTournament();
+      card.innerHTML = html;
+      tournamentDiv.appendChild(card);
     });
 
-    // 토너먼트 대진표와 정보를 로드
-    initializeTournament().then(() => {
-      displayTournamentInfo();
-      renderBracket();
-    });
+    function markResult(index, result) {
+      const card = document.getElementById(`team-${index}`);
+      if (result === 'lose') {
+        const skull = document.createElement('div');
+        skull.className = 'skull';
+        skull.innerText = '💀';
+        card.appendChild(skull);
+      } else if (result === 'win') {
+        alert(`${teams[index].name} 팀 승리! 선물 요청을 위해 오픈카톡을 이용하세요.`);
+      }
+
+      const btns = card.querySelector('.win-lose-btns');
+      if (btns) btns.remove();
+    }
   </script>
 </body>
 </html>

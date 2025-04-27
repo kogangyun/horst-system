@@ -1,11 +1,29 @@
 // clan.js
-import { getDatabase, ref, get, set, update, onValue, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+import { getDatabase, ref, get, set, update, onValue, remove, child } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import { database } from './firebase.js';
 
 const db = database;
 const currentUser = localStorage.getItem("currentUser");
 
-// 섹션 DOM
+// 공통 헬퍼: 아이디에 점수별 glow와 상위 5★ 적용
+function renderUserLabel({ name, score = 0 }, index = -1) {
+  const displayScore = Math.min(score, 3400);
+  let pointClass;
+  if      (displayScore >= 3000) pointClass = "high-glow";
+  else if (displayScore >= 2600) pointClass = "mid-upper-glow";
+  else if (displayScore >= 2200) pointClass = "middle-glow";
+  else if (displayScore >= 1800) pointClass = "lower-glow";
+  else if (displayScore >= 1200) pointClass = "";
+  else                            pointClass = "default-glow";
+
+  let star = "";
+  if (index >= 0 && index < 5) {
+    star = `<span style=\"color:#ffd700\">${"★".repeat(5 - index)}</span> `;
+  }
+  return `<span class=\"${pointClass}\">${star}${name}</span>`;
+}
+
+// DOM 요소
 const mainSection = document.getElementById('mainSection');
 const manageSection = document.getElementById('manageSection');
 const clanNameInput = document.getElementById('clanNameInput');
@@ -18,265 +36,192 @@ const leaderActions = document.getElementById('leaderActions');
 const memberActions = document.getElementById('memberActions');
 
 let myClanName = null;
-let isLeader = false;
 
-// ✅ 클랜 신청 (완성 수정본)
+// 클랜 신청
 window.applyToClan = async () => {
   const clanName = clanNameInput.value.trim();
   if (!clanName) return alert("클랜 이름을 입력하세요.");
 
-  const userRef = ref(db, `users/${currentUser}`);
-  const userSnap = await get(userRef);
-
-  if (!userSnap.exists()) {
-    alert("사용자 정보를 찾을 수 없습니다.");
-    return;
-  }
-  if (userSnap.val().clan) {
-    alert("이미 클랜에 가입되어 있습니다.");
-    return;
-  }
+  const userSnap = await get(ref(db, `users/${currentUser}`));
+  if (!userSnap.exists()) return alert("사용자 정보를 찾을 수 없습니다.");
+  if (userSnap.val().clan) return alert("이미 클랜에 가입되어 있습니다.");
 
   const pendingRef = ref(db, `pendingClans/${clanName}`);
   const clanRef = ref(db, `clans/${clanName}`);
-
-  const [pendingSnap, clanSnap] = await Promise.all([
-    get(pendingRef),
-    get(clanRef)
-  ]);
+  const [pendingSnap, clanSnap] = await Promise.all([get(pendingRef), get(clanRef)]);
 
   if (clanSnap.exists()) {
-    // 👉 이미 존재하는 클랜이면 가입 신청
-    const clanData = clanSnap.val();
-    const pendingMembers = clanData.pending || [];
-    if (pendingMembers.includes(currentUser)) {
-      alert("이미 이 클랜에 가입 신청했습니다.");
-      return;
-    }
-    pendingMembers.push(currentUser);
-    await update(clanRef, { pending: pendingMembers });
+    const data = clanSnap.val();
+    const arr = Array.isArray(data.pending) ? data.pending : [];
+    if (arr.includes(currentUser)) return alert("이미 가입 신청하셨습니다.");
+    arr.push(currentUser);
+    await update(clanRef, { pending: arr });
     alert(`✅ ${clanName} 클랜에 가입 신청 완료!`);
   } else {
-    // 👉 없는 클랜이면 새로 pending 시작
-    let applicants = pendingSnap.exists() ? pendingSnap.val() : [];
-    if (!Array.isArray(applicants)) applicants = [];
-
-    if (applicants.includes(currentUser)) {
-      alert("이미 이 클랜에 신청하셨습니다.");
-      return;
-    }
-
-    applicants.push(currentUser);
-    await set(pendingRef, applicants);
-
-    if (applicants.length >= 5) {
-      // 5명 모이면 클랜 생성
-      await set(clanRef, {
-        leader: applicants[0],
-        members: applicants
-      });
-      for (const member of applicants) {
-        await update(ref(db, `users/${member}`), { clan: clanName });
-      }
+    const arr = pendingSnap.exists() && Array.isArray(pendingSnap.val()) ? pendingSnap.val() : [];
+    if (arr.includes(currentUser)) return alert("이미 신청하셨습니다.");
+    arr.push(currentUser);
+    await set(pendingRef, arr);
+    if (arr.length >= 5) {
+      // 클랜 생성
+      await set(clanRef, { leader: arr[0], members: arr, pending: [] });
+      for (const u of arr) await update(ref(db, `users/${u}`), { clan: clanName });
       await remove(pendingRef);
       alert(`🎉 클랜 ${clanName} 생성 완료!`);
     } else {
-      alert(`✅ ${applicants.length}/5명 신청 완료!`);
+      alert(`✅ 신청 ${arr.length}/5 완료!`);
     }
   }
-
-  clanNameInput.value = "";
+  clanNameInput.value = '';
+  loadMyClan();
 };
 
-// ✅ 내 클랜 불러오기
+// 내 클랜 정보 로드
 async function loadMyClan() {
   const userSnap = await get(ref(db, `users/${currentUser}`));
-  if (!userSnap.exists()) {
-    clanMembersList.innerHTML = "<li>사용자 정보를 찾을 수 없습니다.</li>";
-    return;
-  }
-
+  if (!userSnap.exists()) return;
   myClanName = userSnap.val().clan || null;
+  renderMemberList();
+  toggleNextButton();
+}
+
+// 멤버 리스트 렌더링
+function renderMemberList() {
+  clanMembersList.innerHTML = '';
   if (!myClanName) {
-    clanMembersList.innerHTML = "<li>아직 클랜에 가입되어 있지 않습니다.</li>";
+    clanMembersList.innerHTML = '<li>클랜에 속해 있지 않습니다.</li>';
     return;
   }
-
-  const clanRef = ref(db, `clans/${myClanName}`);
-  onValue(clanRef, (snap) => {
-    if (!snap.exists()) {
-      clanMembersList.innerHTML = "<li>클랜 정보를 불러올 수 없습니다.</li>";
-      return;
-    }
-
-    const clan = snap.val();
-    const members = clan.members || [];
-    clanMembersList.innerHTML = "";
-
-    members.forEach(member => {
+  onValue(ref(db, `clans/${myClanName}/members`), snap => {
+    const list = snap.exists() ? snap.val() : [];
+    clanMembersList.innerHTML = '';
+    list.forEach((member, idx) => {
       const li = document.createElement('li');
-      li.innerText = member;
-      if (member === clan.leader) li.classList.add('leader');
+      li.innerHTML = renderUserLabel({ name: member, score: 0 }, idx);
+      li.classList.toggle('leader', snap.val().leader === member);
       clanMembersList.appendChild(li);
     });
-
-    isLeader = (clan.leader === currentUser);
-
-    if (members.length >= 5) {
-      nextButton.classList.remove('hidden');
-    } else {
-      nextButton.classList.add('hidden');
-    }
   });
 }
 
-// ✅ 클랜 관리 화면으로 전환
+// 다음 버튼 토글
+function toggleNextButton() {
+  nextButton.classList.toggle('hidden', !myClanName);
+}
+
+// 메인/관리 섹션 전환
 window.showManageSection = () => {
   mainSection.classList.add('hidden');
   manageSection.classList.remove('hidden');
   loadManageScreen();
 };
-
-// ✅ 메인 화면으로 복귀
 window.showMainSection = () => {
   manageSection.classList.add('hidden');
   mainSection.classList.remove('hidden');
 };
 
-// ✅ 관리 화면 데이터 불러오기
+// 관리 화면 로드
 async function loadManageScreen() {
   if (!myClanName) return;
-
   const clanSnap = await get(ref(db, `clans/${myClanName}`));
   if (!clanSnap.exists()) return;
-
   const clan = clanSnap.val();
-  const members = clan.members || [];
 
-  manageMembersList.innerHTML = "";
-  members.forEach(member => {
+  // 멤버 관리
+  manageMembersList.innerHTML = '';
+  clan.members.forEach((member, idx) => {
     const li = document.createElement('li');
-    li.innerText = member;
-    if (member === clan.leader) li.classList.add('leader');
+    li.innerHTML = renderUserLabel({ name: member, score: 0 }, idx);
+    li.classList.toggle('leader', clan.leader === member);
     manageMembersList.appendChild(li);
   });
 
+  // 권한에 따른 UI
   if (clan.leader === currentUser) {
     leaderActions.classList.remove('hidden');
     memberActions.classList.add('hidden');
     loadPendingList();
-    loadTransferList(members);
+    loadTransferList(clan.members);
   } else {
     leaderActions.classList.add('hidden');
     memberActions.classList.remove('hidden');
   }
 }
 
-// ✅ 대기자 리스트 불러오기
+// 가입 대기자 목록
 async function loadPendingList() {
   const clanSnap = await get(ref(db, `clans/${myClanName}`));
-  if (!clanSnap.exists() || !clanSnap.val().pending) {
-    pendingList.innerHTML = "<li>대기자가 없습니다.</li>";
-    return;
-  }
-
-  const applicants = clanSnap.val().pending;
-  pendingList.innerHTML = "";
-  applicants.forEach(name => {
+  const pending = clanSnap.val().pending || [];
+  pendingList.innerHTML = '';
+  pending.forEach((member, idx) => {
     const li = document.createElement('li');
-    li.innerHTML = `${name} 
-      <button onclick="approveMember('${name}')">승인</button>
-      <button onclick="rejectMember('${name}')">거절</button>`;
+    li.innerHTML = renderUserLabel({ name: member, score: 0 }, idx) +
+      `<button onclick="approveMember('${member}')">승인</button>` +
+      `<button onclick="rejectMember('${member}')">거절</button>`;
     pendingList.appendChild(li);
   });
+  if (!pending.length) pendingList.innerHTML = '<li>대기자가 없습니다.</li>';
 }
 
-// ✅ 승인 처리
-window.approveMember = async (username) => {
+window.approveMember = async (member) => {
   const clanRef = ref(db, `clans/${myClanName}`);
   const clanSnap = await get(clanRef);
-
-  if (!clanSnap.exists()) return;
-
-  const clan = clanSnap.val();
-  const pending = (clan.pending || []).filter(name => name !== username);
-  const members = [...(clan.members || []), username];
-
-  await update(clanRef, { members, pending });
-
-  await update(ref(db, `users/${username}`), { clan: myClanName });
-
+  const { members, pending } = clanSnap.val();
+  await update(clanRef, {
+    members: [...members, member],
+    pending: pending.filter(m => m !== member)
+  });
+  await update(ref(db, `users/${member}`), { clan: myClanName });
   loadManageScreen();
 };
 
-// ✅ 거절 처리
-window.rejectMember = async (username) => {
+window.rejectMember = async (member) => {
   const clanRef = ref(db, `clans/${myClanName}`);
   const clanSnap = await get(clanRef);
-
-  if (!clanSnap.exists()) return;
-
-  const pending = (clanSnap.val().pending || []).filter(name => name !== username);
-  await update(clanRef, { pending });
-
+  const pending = clanSnap.val().pending;
+  await update(clanRef, { pending: pending.filter(m => m !== member) });
   loadManageScreen();
 };
 
-// ✅ 클랜장 양도
-async function loadTransferList(members) {
-  transferTarget.innerHTML = "";
+// 양도 대상 로드
+function loadTransferList(members) {
+  transferTarget.innerHTML = '';
   members.filter(m => m !== currentUser).forEach(m => {
-    const option = document.createElement('option');
-    option.value = m;
-    option.innerText = m;
-    transferTarget.appendChild(option);
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.innerText = m;
+    transferTarget.appendChild(opt);
   });
 }
 
 window.transferLeadership = async () => {
   const newLeader = transferTarget.value;
   if (!newLeader) return alert("양도할 대상을 선택하세요.");
-
   await update(ref(db, `clans/${myClanName}`), { leader: newLeader });
-  alert(`클랜장이 ${newLeader}님으로 변경되었습니다.`);
   loadManageScreen();
 };
 
-// ✅ 클랜 해체
 window.disbandClan = async () => {
   if (!confirm("정말 클랜을 해체하시겠습니까?")) return;
-
   const clanRef = ref(db, `clans/${myClanName}`);
   const clanSnap = await get(clanRef);
-
-  if (!clanSnap.exists()) return;
-
-  const allMembers = clanSnap.val().members || [];
-  for (const member of allMembers) {
-    await update(ref(db, `users/${member}`), { clan: null });
+  const members = clanSnap.val().members || [];
+  for (const m of members) {
+    await update(ref(db, `users/${m}`), { clan: null });
   }
-
-  await remove(ref(db, `clans/${myClanName}`));
-  alert("클랜이 해체되었습니다.");
+  await remove(clanRef);
   location.href = "main.html";
 };
 
-// ✅ 클랜 탈퇴
 window.leaveClan = async () => {
   if (!confirm("정말 클랜을 탈퇴하시겠습니까?")) return;
-
   const clanRef = ref(db, `clans/${myClanName}`);
   const clanSnap = await get(clanRef);
-
-  if (!clanSnap.exists()) return;
-
-  const members = clanSnap.val().members.filter(name => name !== currentUser);
+  const members = clanSnap.val().members.filter(m => m !== currentUser);
   await update(clanRef, { members });
   await update(ref(db, `users/${currentUser}`), { clan: null });
-
-  alert("클랜을 탈퇴했습니다.");
   location.href = "main.html";
 };
 
-// ✅ 처음 실행
+// 초기 실행
 loadMyClan();

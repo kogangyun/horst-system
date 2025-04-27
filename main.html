@@ -106,15 +106,20 @@ ul li:hover {
   </div>
 
   <!-- 토너먼트 -->
-  <div class="box">
-    <div class="section-title">🏅 토너먼트</div>
-    <p><strong>맵:</strong> <span id="tournamentMap">불러오는 중...</span></p>
-    <p id="tournamentTime" style="color: #00ff88; font-weight: bold; margin-top: 10px;"></p>
-    <p id="queueStatus"></p>
-    <button id="joinTournamentBtn" onclick="joinTournament()">⚔️ 토너먼트 참가</button>
-    <button id="cancelTournamentBtn" onclick="cancelTournament()">❌ 토너먼트 취소</button>
-    <div id="participantList"></div>
-  </div>
+<!-- 토너먼트 -->
+<div class="box">
+  <div class="section-title">🏅 토너먼트</div>
+  <p><strong>맵:</strong> <span id="tournamentMap">불러오는 중...</span></p>
+  <p id="tournamentTime" style="color: #00ff88; font-weight: bold; margin-top: 10px;"></p>
+  <p id="queueStatus"></p>
+  <button id="joinTournamentBtn" onclick="joinTournament()">⚔️ 토너먼트 참가</button>
+  <button id="cancelTournamentBtn" onclick="cancelTournament()">❌ 토너먼트 취소</button>
+  <div id="participantList"></div>
+
+  <!-- ✨ 추가: 이번주 토너먼트 우승자 표시 박스 -->
+  <div id="tournamentWinnerBox" style="margin-top: 30px;"></div>
+</div>
+
 
   <!-- 실시간 매칭 -->
   <div class="box">

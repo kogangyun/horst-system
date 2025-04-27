@@ -53,7 +53,8 @@ function signup() {
         status,              // 승인 대기 상태 또는 바로 승인
         role,                // user 또는 admin
         isBlocked: false,    // 차단 여부
-        joinedAt             // 가입 시간 저장
+        joinedAt,            // 가입 시간 저장
+        points: 1000         // ✅ 1000점 추가
       };
 
       set(userRef, newUser)

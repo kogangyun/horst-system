@@ -129,67 +129,10 @@
     <h1>HORST 관리자 페이지</h1>
   </header>
 
-  <!-- 가입 대기자 -->
+  <!-- 가입 대기자 관리 -->
   <div class="section">
     <h2>가입 대기자 관리</h2>
     <button onclick="location.href='pending-users.html'">가입 대기자 목록</button>
-  </div>
-
-  <!-- 클랜 신청 -->
-  <div class="section">
-    <h2>클랜 신청 관리</h2>
-    <ul id="pendingClans"></ul>
-  </div>
-
-  <!-- 공지사항 -->
-  <div class="section">
-    <h2>📢 공지사항 관리</h2>
-    <form id="noticeForm">
-      <textarea id="noticeContent" placeholder="공지 내용을 입력하세요."></textarea><br>
-      <button type="submit">공지 추가</button>
-    </form>
-    <ul id="noticeList" style="text-align: left;"></ul>
-  </div>
-
-  <!-- 이의제기 -->
-  <div class="section">
-    <h2>⚠️ 이의 제기 관리</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>매치 ID</th>
-          <th>상태</th>
-          <th>처리</th>
-        </tr>
-      </thead>
-      <tbody id="disputeList"></tbody>
-    </table>
-  </div>
-
-  <!-- 차단된 유저 -->
-  <div class="section">
-    <h2>🚫 차단된 유저 목록</h2>
-    <ul id="blockedUsers"></ul>
-  </div>
-
-  <!-- 매칭 통제 -->
-  <div class="section">
-    <h2>⚔️ 매칭 통제 시스템</h2>
-    <button onclick="location.href='admin-match.html'">매칭 결과 관리</button>
-  </div>
-
- <!-- 회원 관리 -->
-  <div class="section">
-    <h2>👥 회원 관리</h2>
-    <input type="text" id="searchUser" placeholder="아이디 검색" oninput="renderUserList()">
-    <ul id="userList"></ul>
-
-    <!-- 페이지 네비게이션 -->
-    <div>
-      <button id="prevPage" onclick="changePage('prev')">◀ 이전</button>
-      <span id="pageNumber">1</span> / <span id="totalPages">1</span>
-      <button id="nextPage" onclick="changePage('next')">다음 ▶</button>
-    </div>
   </div>
 
   <!-- 공지사항 관리 -->
@@ -202,61 +145,49 @@
     <ul id="noticeList"></ul>
   </div>
 
-  <script type="module">
-    import { db } from './firebase.js';
-    import { ref, get, child } from 'https://www.gstatic.com/firebasejs/10.11.0/firebase-database.js';
+  <!-- 이의제기 관리 -->
+  <div class="section">
+    <h2>⚠️ 이의 제기 관리</h2>
+    <table>
+      <thead>
+        <tr><th>매치 ID</th><th>상태</th><th>처리</th></tr>
+      </thead>
+      <tbody id="disputeList"></tbody>
+    </table>
+  </div>
 
-    let currentPage = 1;
-    const pageSize = 5;
+  <!-- 차단된 유저 목록 -->
+  <div class="section">
+    <h2>🚫 차단된 유저 목록</h2>
+    <ul id="blockedUsers"></ul>
+  </div>
 
-    // 유저 목록 렌더링
-    async function renderUserList() {
-      const keyword = document.getElementById("searchUser").value.toLowerCase();
-      const listEl = document.getElementById("userList");
-      const pageNumberEl = document.getElementById("pageNumber");
-      const totalPagesEl = document.getElementById("totalPages");
+  <!-- 매칭 통제 시스템 -->
+  <div class="section">
+    <h2>⚔️ 매칭 통제 시스템</h2>
+    <button onclick="location.href='admin-match.html'">매칭 결과 관리</button>
+  </div>
 
-      const snap = await get(child(ref(db), "users"));
-      if (!snap.exists()) return;
-
-      const users = Object.entries(snap.val())
-        .filter(([uid, data]) => data.status === "approved" && uid.toLowerCase().includes(keyword));
-
-      const totalPages = Math.ceil(users.length / pageSize);
-      totalPagesEl.innerText = totalPages;
-
-      const paginatedUsers = users.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-
-      listEl.innerHTML = "";
-      if (paginatedUsers.length === 0) {
-        listEl.innerHTML = "<li>등록된 유저 없음</li>";
-        return;
-      }
-
-      paginatedUsers.forEach(([uid, data]) => {
-        const li = document.createElement("li");
-        li.innerHTML = `
-          <span>${uid} (${data.role || "user"})</span>
-          <button onclick="banUser('${uid}')" class="ban-btn">❌ 추방</button>
-        `;
-        listEl.appendChild(li);
-      });
-
-      pageNumberEl.innerText = currentPage;
-    }
-
-    // 페이지 이동
-    function changePage(direction) {
-      if (direction === "prev" && currentPage > 1) {
-        currentPage--;
-      } else if (direction === "next" && currentPage < parseInt(document.getElementById("totalPages").innerText)) {
-        currentPage++;
-      }
-      renderUserList();
-    }
-
-    renderUserList(); // 초기 로딩
-  </script>
+  <!-- 회원 관리 -->
+  <div class="section">
+    <h2>👥 회원 관리</h2>
+    <input type="text" id="searchUser" placeholder="아이디 검색" oninput="renderUserList()">
+    <ul id="userList"></ul>
+    <div>
+      <button id="prevPage" onclick="changePage('prev')">◀ 이전</button>
+      <span id="pageNumber">1</span> / <span id="totalPages">1</span>
+      <button id="nextPage" onclick="changePage('next')">다음 ▶</button>
+    </div>
+  </div>
+ 
+  <!-- 시즌 정보 추가 -->
+  <div class="section">
+  <h2>📅 시즌 정보</h2>
+  <form id="seasonForm" style="display: flex; align-items: center; gap: 10px; justify-content: center;">
+    <input type="text" id="seasonInput" placeholder="시즌 정보를 입력하세요." style="flex: 1; max-width: 400px;">
+    <button type="submit">추가</button>
+  </form>
+  </div>
 
   <!-- 로그아웃 -->
   <div class="section">
@@ -264,6 +195,10 @@
     <button onclick="logout()">로그아웃</button>
   </div>
 
+  <button id="hardResetBtn">시즌 종료 및 포인트 초기화</button>
+
+  <!-- 스크립트 로드 -->
+  <script type="module" src="firebase.js"></script>
   <script type="module" src="admin.js"></script>
 </body>
 </html>
