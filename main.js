@@ -62,33 +62,26 @@ async function loadUsagePeriod() {
 }
 loadUsagePeriod();
 
-// ----- 매칭 대기 로직 -----
+// ----- 매칭 대기 로직 (keyed onDisconnect) -----
 let matchQueue   = [];
 let matchElapsed = 0;
 let timerInterval;
 
 window.joinMatch = async () => {
-  const snap = await get(ref(db, "matchQueue"));
-  const serverQueue = snap.exists() ? snap.val() : [];
-  if (serverQueue.includes(currentUser)) {
-    alert("이미 대기 중입니다.");
-    return;
-  }
-  serverQueue.push(currentUser);
-  await set(ref(db, "matchQueue"), serverQueue);
+  const userNode = ref(db, `matchQueueMap/${currentUser}`);
+  await set(userNode, Date.now());
+  userNode.onDisconnect().remove();
   startTimer();
 };
 
 window.cancelMatch = async () => {
-  const snap = await get(ref(db, "matchQueue"));
-  let queue = snap.exists() ? snap.val() : [];
-  queue = queue.filter(u => u !== currentUser);
-  await set(ref(db, "matchQueue"), queue);
+  const userNode = ref(db, `matchQueueMap/${currentUser}`);
+  await set(userNode, null);
   clearTimer();
 };
 
-onValue(ref(db, "matchQueue"), snap => {
-  matchQueue = snap.exists() ? snap.val() : [];
+onValue(ref(db, "matchQueueMap"), snap => {
+  matchQueue = snap.exists() ? Object.keys(snap.val()) : [];
   updateMatchStatus();
 });
 
@@ -112,7 +105,7 @@ async function updateMatchStatus() {
       timestamp: new Date().toISOString()
     };
 
-    await set(ref(db, "matchQueue"), matchQueue.slice(10));
+    await set(ref(db, "matchQueueMap"), matchQueue.slice(10).reduce((acc, uid) => { acc[uid] = true; return acc; }, {}));
     await set(ref(db, "currentMatch"), matchData);
 
     matchSound.play().catch(console.error);
@@ -163,9 +156,12 @@ onValue(ref(db, "tournament"), snap => {
   tournamentMap.innerText = data.map || "정보 없음";
 });
 
-onValue(ref(db, "tournament/participants"), snap => {
-  const count = snap.exists() ? Object.keys(snap.val()).length : 0;
-  queueStatus.innerText = `현재 참가자: ${count}/20`;
+onValue(ref(db, "tournament/participants"), async snap => {
+  const parts = snap.exists() ? snap.val() : {};
+  const count = Object.keys(parts).length;
+  const dataSnap = await get(ref(db, "tournament"));
+  const capacity = dataSnap.exists() ? dataSnap.val().capacity : 20;
+  queueStatus.innerText = `현재 참가자: ${count}/${capacity}`;
 });
 
 function updateTournamentCountdown() {
@@ -187,10 +183,13 @@ setInterval(updateTournamentCountdown, 1000);
 updateTournamentCountdown();
 
 window.joinTournament = async () => {
-  const snap = await get(ref(db, "tournament/participants"));
-  const parts = snap.exists() ? snap.val() : {};
+  const partsSnap = await get(ref(db, "tournament/participants"));
+  const parts = partsSnap.exists() ? partsSnap.val() : {};
+  const count = Object.keys(parts).length;
+  const dataSnap = await get(ref(db, "tournament"));
+  const capacity = dataSnap.exists() ? dataSnap.val().capacity : 20;
   if (parts[currentUser]) return alert("이미 신청됨");
-  if (Object.keys(parts).length >= 20) return alert("정원 초과");
+  if (count >= capacity) return alert("정원 초과");
   await update(ref(db, `tournament/participants/${currentUser}`), {
     name: currentUser,
     joinedAt: Date.now(),
@@ -210,30 +209,5 @@ onChildAdded(ref(db, "tournament/matches"), snap => {
   const teamB = matchData.teamB || [];
   if (teamA.includes(currentUser) || teamB.includes(currentUser)) {
     matchSound.play().catch(console.error);
-  }
-});
-
-// ✅ 완성된 beforeunload
-window.addEventListener("beforeunload", async (e) => {
-  try {
-    // 매칭 대기열에서 제거
-    const snap = await get(ref(db, "matchQueue"));
-    if (snap.exists()) {
-      let queue = snap.val();
-      if (queue.includes(currentUser)) {
-        queue = queue.filter(u => u !== currentUser);
-        await set(ref(db, "matchQueue"), queue);
-      }
-    }
-    // 토너먼트 참가자에서도 제거
-    await set(ref(db, `tournament/participants/${currentUser}`), null);
-    // 온라인 상태 false
-    await update(ref(db, `users/${currentUser}`), {
-      online: false
-    });
-    // localStorage currentUser 제거
-    localStorage.removeItem('currentUser');
-  } catch (error) {
-    console.error("창 닫기 처리 중 오류:", error);
   }
 });
