@@ -181,7 +181,7 @@ async function loadAndRenderMatch() {
       }
       await update(ref(db), updates);
 
-      await set(ref(db, "currentMatch"), null); // ✅ currentMatch 삭제
+      await set(ref(db, "currentMatch"), null);
 
       isDirty = false;
       window.onbeforeunload = null;
