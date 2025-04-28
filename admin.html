@@ -200,6 +200,75 @@
 
   <!-- 스크립트 로드 -->
   <script type="module" src="firebase.js"></script>
-  <script type="module" src="admin.js"></script>
+  <!-- Firebase 연결 -->
+<script type="module" src="firebase.js"></script>
+
+<!-- 참가자 정리용 스크립트 추가 -->
+<script type="module">
+import { db } from "./firebase.js";
+import { ref, get, update } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+// 오래된 참가자 삭제
+async function cleanOldParticipants() {
+  try {
+    const partsSnap = await get(ref(db, "tournament/participants"));
+    if (!partsSnap.exists()) {
+      console.log("❌ 참가자가 없습니다.");
+      return;
+    }
+
+    const participants = partsSnap.val();
+    const now = Date.now();
+    const MAX_VALID_DURATION = 30 * 60 * 1000; // 30분
+
+    const updates = {};
+
+    Object.entries(participants).forEach(([uid, info]) => {
+      if (!info || typeof info.joinedAt !== "number") return;
+      if (now - info.joinedAt > MAX_VALID_DURATION) {
+        updates[`tournament/participants/${uid}`] = null;
+      }
+    });
+
+    if (Object.keys(updates).length > 0) {
+      await update(ref(db), updates);
+      console.log("✅ 유령 참가자 정리 완료!");
+    } else {
+      console.log("👌 정리할 참가자 없음.");
+    }
+  } catch (e) {
+    console.error("❌ 참가자 정리 중 에러:", e);
+  }
+}
+
+// 참가자 현황 보기
+async function checkParticipants() {
+  try {
+    const partsSnap = await get(ref(db, "tournament/participants"));
+    if (!partsSnap.exists()) {
+      console.log("❌ 참가자가 없습니다.");
+      return;
+    }
+
+    const participants = partsSnap.val();
+    const now = Date.now();
+
+    const list = Object.entries(participants).map(([uid, info]) => ({
+      uid,
+      elapsedMinutes: Math.floor((now - (info?.joinedAt || 0)) / 60000)
+    }));
+
+    console.table(list);
+  } catch (e) {
+    console.error("❌ 참가자 분석 에러:", e);
+  }
+}
+
+window.cleanOldParticipants = cleanOldParticipants;
+window.checkParticipants = checkParticipants;
+</script>
+
+<!-- 기존 관리자 기능 -->
+<script type="module" src="admin.js"></script>
 </body>
 </html>

@@ -7,6 +7,7 @@ import {
   child,
   update,
   onChildAdded,
+  remove,
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
 // ----- DOM 요소 가져오기 -----
@@ -61,22 +62,21 @@ async function loadUsagePeriod() {
   }
 }
 loadUsagePeriod();
-
-// ----- 매칭 대기 로직 (keyed onDisconnect) -----
-let matchQueue   = [];
+// ----- 매칭 대기 로직 -----
+let matchQueue = [];
 let matchElapsed = 0;
 let timerInterval;
 
-window.joinMatch = async () => {
+async function joinMatch() {
   const userNode = ref(db, `matchQueueMap/${currentUser}`);
-  await set(userNode, Date.now());
   userNode.onDisconnect().remove();
+  await set(userNode, Date.now());
   startTimer();
-};
+}
 
-window.cancelMatch = async () => {
+window.cancelMatch = async function() {
   const userNode = ref(db, `matchQueueMap/${currentUser}`);
-  await set(userNode, null);
+  await remove(userNode);
   clearTimer();
 };
 
@@ -105,7 +105,16 @@ async function updateMatchStatus() {
       timestamp: new Date().toISOString()
     };
 
-    await set(ref(db, "matchQueueMap"), matchQueue.slice(10).reduce((acc, uid) => { acc[uid] = true; return acc; }, {}));
+    const remainder = matchQueue.slice(10);
+    const updates = {};
+    remainder.forEach(uid => {
+      updates[uid] = Date.now();
+    });
+    await set(ref(db, "matchQueueMap"), updates);
+    remainder.forEach(uid => {
+      ref(db, `matchQueueMap/${uid}`).onDisconnect().remove();
+    });
+
     await set(ref(db, "currentMatch"), matchData);
 
     matchSound.play().catch(console.error);
@@ -144,12 +153,16 @@ function createBalancedTeams(players) {
   const teamA = [], teamB = [];
   let sumA = 0, sumB = 0;
   scored.forEach(p => {
-    if (sumA <= sumB) { teamA.push(p.name); sumA += p.score; }
-    else              { teamB.push(p.name); sumB += p.score; }
+    if (sumA <= sumB) {
+      teamA.push(p.name);
+      sumA += p.score;
+    } else {
+      teamB.push(p.name);
+      sumB += p.score;
+    }
   });
   return { teamA, teamB };
 }
-
 // ----- 토너먼트 로직 -----
 onValue(ref(db, "tournament"), snap => {
   const data = snap.val() || {};
@@ -159,46 +172,44 @@ onValue(ref(db, "tournament"), snap => {
 onValue(ref(db, "tournament/participants"), async snap => {
   const parts = snap.exists() ? snap.val() : {};
   const count = Object.keys(parts).length;
-  const dataSnap = await get(ref(db, "tournament"));
-  const capacity = dataSnap.exists() ? dataSnap.val().capacity : 20;
-  queueStatus.innerText = `현재 참가자: ${count}/${capacity}`;
+  queueStatus.innerText = `현재 참가자: ${count}명`;
 });
 
-function updateTournamentCountdown() {
-  const now = new Date();
-  const day = now.getDay();
-  const toFriday = (5 - day + 7) % 7 || 7;
-  const target = new Date(now);
-  target.setDate(now.getDate() + toFriday);
-  target.setHours(19, 0, 0, 0);
+window.joinTournament = async function() {
+  try {
+    const now = new Date();
+    const day = now.getDay();    // 요일 (0=일, 5=금)
+    const hour = now.getHours(); // 시
+    const minute = now.getMinutes(); // 분
 
-  const diff = target - now;
-  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const s = Math.floor((diff % (1000 * 60)) / 1000);
-  tournamentTime.innerText = `매주 금요일 19:00까지: ${d}일 ${h}시간 ${m}분 ${s}초`;
-}
-setInterval(updateTournamentCountdown, 1000);
-updateTournamentCountdown();
+    if (!(day === 5 && (hour > 18 || (hour === 18 && minute >= 30)))) {
+      alert("⏰ 토너먼트 참가 신청은 매주 금요일 18:30 이후에만 가능합니다.");
+      return;
+    }
 
-window.joinTournament = async () => {
-  const partsSnap = await get(ref(db, "tournament/participants"));
-  const parts = partsSnap.exists() ? partsSnap.val() : {};
-  const count = Object.keys(parts).length;
-  const dataSnap = await get(ref(db, "tournament"));
-  const capacity = dataSnap.exists() ? dataSnap.val().capacity : 20;
-  if (parts[currentUser]) return alert("이미 신청됨");
-  if (count >= capacity) return alert("정원 초과");
-  await update(ref(db, `tournament/participants/${currentUser}`), {
-    name: currentUser,
-    joinedAt: Date.now(),
-  });
-  alert("✅ 토너먼트 참가 완료!");
+    const partsSnap = await get(ref(db, "tournament/participants"));
+    const parts = partsSnap.exists() ? partsSnap.val() : {};
+    if (parts[currentUser]) {
+      alert("이미 신청됨");
+      return;
+    }
+
+    const partNode = ref(db, `tournament/participants/${currentUser}`);
+    partNode.onDisconnect().remove(); // ✅ 먼저 등록
+    await set(partNode, {
+      name: currentUser,
+      joinedAt: Date.now(),
+    });
+
+    alert("✅ 토너먼트 참가 완료!");
+  } catch (e) {
+    console.error("토너먼트 참가 중 오류:", e);
+    alert("❌ 참가 실패. 다시 시도해주세요.");
+  }
 };
 
-window.cancelTournament = async () => {
-  await set(ref(db, `tournament/participants/${currentUser}`), null);
+window.cancelTournament = async function() {
+  await remove(ref(db, `tournament/participants/${currentUser}`));
   alert("✅ 참가 취소 완료!");
 };
 
@@ -211,3 +222,109 @@ onChildAdded(ref(db, "tournament/matches"), snap => {
     matchSound.play().catch(console.error);
   }
 });
+
+// ----- 토너먼트 매칭 생성 함수 -----
+async function runTournamentMatchMaking() {
+  const partsSnap = await get(ref(db, "tournament/participants"));
+  if (!partsSnap.exists()) {
+    console.log("❌ 참가자가 없습니다.");
+    return;
+  }
+
+  const participants = Object.keys(partsSnap.val());
+
+  if (participants.length < 20) {
+    console.log("❌ 참가자가 20명 미만입니다.");
+    return;
+  }
+
+  const scores = {};
+  for (const uid of participants) {
+    let total = 1000;
+    try {
+      const historySnap = await get(ref(db, `history/${uid}`));
+      if (historySnap.exists()) {
+        const history = Object.values(historySnap.val());
+        for (const record of history) {
+          total += record.pointChange || 0;
+        }
+      }
+    } catch (e) {
+      console.error(`Error loading history for ${uid}`, e);
+    }
+    scores[uid] = total;
+  }
+
+  const shuffled = shuffleArray(participants);
+  const selected = shuffled.slice(0, 20).map(uid => ({ uid, score: scores[uid] }));
+
+  const teamA = [], teamB = [];
+  let sumA = 0, sumB = 0;
+  selected.forEach(p => {
+    if (sumA <= sumB) {
+      teamA.push(p.uid);
+      sumA += p.score;
+    } else {
+      teamB.push(p.uid);
+      sumB += p.score;
+    }
+  });
+
+  const matchData = {
+    id: `tournament-${Date.now()}`,
+    teamA,
+    teamB,
+    createdAt: new Date().toISOString()
+  };
+
+  await set(ref(db, `tournament/matches/${matchData.id}`), matchData);
+  matchSound.play().catch(console.error);
+  console.log("✅ Tournament match created:", matchData);
+}
+
+// ----- 배열 섞기 함수 -----
+function shuffleArray(array) {
+  const arr = array.slice();
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+// ----- 카운트다운 및 금요일 19:00 체크 -----
+function updateTournamentCountdown() {
+  const now = new Date();
+  const day = now.getDay();
+  const toFriday = (5 - day + 7) % 7 || 7;
+  const target = new Date(now);
+  target.setDate(now.getDate() + toFriday);
+  target.setHours(19, 0, 0, 0);
+
+  const diff = target - now;
+
+  if (diff <= 0 && diff > -1000) {
+    runTournamentMatchMaking().catch(console.error);
+  }
+
+  const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const s = Math.floor((diff % (1000 * 60)) / 1000);
+  tournamentTime.innerText = `매주 금요일 19:00까지: ${d}일 ${h}시간 ${m}분 ${s}초`;
+}
+
+// ====== 버튼에서 쓸 수 있게 전역 등록 ======
+window.joinMatch = joinMatch;
+window.cancelMatch = cancelMatch;
+window.joinTournament = joinTournament;
+window.cancelTournament = cancelTournament;
+
+// ✅ DOMContentLoaded 이후에 버튼 이벤트 연결
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('joinMatchButton').addEventListener('click', window.joinMatch);
+  document.getElementById('cancelMatchButton').addEventListener('click', window.cancelMatch);
+});
+
+setInterval(updateTournamentCountdown, 1000);
+updateTournamentCountdown();
