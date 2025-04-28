@@ -14,7 +14,7 @@ const tableBody = document.querySelector("table tbody");
 async function loadHistory() {
   const snap = await get(ref(db, `history/${currentUser}`));
   if (!snap.exists()) {
-    tableBody.innerHTML = `<tr><td class="no-history" colspan="3">전적이 없습니다.</td></tr>`;
+    tableBody.innerHTML = `<tr><td class="no-history" colspan="5">전적이 없습니다.</td></tr>`;
     return;
   }
 
@@ -29,13 +29,17 @@ async function loadHistory() {
   for (let [matchId, info] of entries) {
     const date = new Date(info.timestamp).toLocaleString();
     const team = info.team;
+    const map = info.map || "-";
     const result = info.result;
+    const pointChange = info.pointChange;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td>${date}</td>
       <td>${team}</td>
-      <td class="${result === "win" ? "win" : "lose"}">${result.toUpperCase()}</td>
+      <td>${map}</td>
+      <td class="${result === 'win' ? 'win' : 'lose'}">${result.toUpperCase()}</td>
+      <td>${pointChange > 0 ? '+' + pointChange : pointChange}</td>
     `;
     tableBody.appendChild(tr);
   }

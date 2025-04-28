@@ -84,20 +84,33 @@
       location.href = 'index.html';
     };
 
-    // 환영 메시지 (생략)
-    (async () => {
-      const welcomeBox = document.getElementById('welcomeBox');
-      try {
-        const snap = await get(child(ref(db), `users/${currentUser}`));
-        const user = snap.exists() ? snap.val() : {};
-        const clan = user.clanName || '미소속';
-        welcomeBox.innerHTML =
-          `<h2>${currentUser}님 (클랜: ${clan}), HORST에 오신 것을 환영합니다</h2>`;
-      } catch {
-        welcomeBox.innerHTML =
-          `<h2>${currentUser}님, HORST에 오신 것을 환영합니다</h2>`;
-      }
-    })();
+// 환영 메시지
+(async () => {
+  const welcomeBox = document.getElementById('welcomeBox');
+  try {
+    const snap = await get(child(ref(db), `users/${currentUser}`));
+    const user = snap.exists() ? snap.val() : {};
+    const clan = user.clanName || '미소속';
+    const score = user.score || 1000;
+
+    // 점수별 색상 클래스 결정
+    let pointClass = "";
+    const displayScore = score > 3400 ? 3400 : score;
+
+    if (displayScore >= 3000) pointClass = "high-glow";
+    else if (displayScore >= 2600) pointClass = "mid-upper-glow";
+    else if (displayScore >= 2200) pointClass = "middle-glow";
+    else if (displayScore >= 1800) pointClass = "lower-glow";
+    else if (displayScore >= 1200) pointClass = "";
+    else pointClass = "default-glow";
+
+    welcomeBox.innerHTML =
+      `<h2><span class="${pointClass}">${currentUser}</span>님 (클랜: ${clan}), HORST에 오신 것을 환영합니다</h2>`;
+  } catch {
+    welcomeBox.innerHTML =
+      `<h2>${currentUser}님, HORST에 오신 것을 환영합니다</h2>`;
+  }
+})();
 
     // 이용 기간 표시 (생략)
     (async () => {

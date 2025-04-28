@@ -72,6 +72,26 @@
     .neon-glow {
       text-shadow: 0 0 10px #ff7f7f, 0 0 20px #ff7f7f, 0 0 30px #ff2f5e;
     }
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 10px auto;
+      max-width: 600px;
+      text-align: left;
+    }
+    ul li {
+      padding: 8px;
+      background: #111;
+      margin-bottom: 6px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    ul li:hover {
+      background: #222;
+    }
+    .paging {
+      margin: 10px;
+    }
   </style>
 </head>
 <body>
@@ -80,6 +100,12 @@
   <!-- 사용자 점수 조정 -->
   <div class="section">
     <h2 class="neon-glow">🔧 사용자 점수 조정</h2>
+    <ul id="userScoreList"></ul>
+    <div class="paging">
+      <button id="userPrev">Prev</button>
+      <span id="userPageNum">1</span>/<span id="userTotal">1</span>
+      <button id="userNext">Next</button>
+    </div>
     <input type="text" id="targetUser" placeholder="사용자 ID" />
     <input type="number" id="scoreChange" placeholder="점수 (+/-)" />
     <button onclick="updateUserScore()">점수 수정</button>
@@ -89,6 +115,12 @@
   <!-- 매칭 기록 삭제 -->
   <div class="section">
     <h2 class="neon-glow">📂 매칭 기록 삭제</h2>
+    <ul id="deleteMatchList"></ul>
+    <div class="paging">
+      <button id="deletePrev">Prev</button>
+      <span id="deletePageNum">1</span>/<span id="deleteTotal">1</span>
+      <button id="deleteNext">Next</button>
+    </div>
     <input type="text" id="matchIdToDelete" placeholder="매칭 ID" />
     <button onclick="deleteMatch()">매칭 삭제</button>
     <p id="matchDeleteStatus" class="status-text"></p>
@@ -97,6 +129,12 @@
   <!-- 승/패 조작 -->
   <div class="section">
     <h2 class="neon-glow">⚖️ 승/패 조작</h2>
+    <ul id="editMatchList"></ul>
+    <div class="paging">
+      <button id="editPrev">Prev</button>
+      <span id="editPageNum">1</span>/<span id="editTotal">1</span>
+      <button id="editNext">Next</button>
+    </div>
     <input type="text" id="matchIdEdit" placeholder="매칭 ID" />
     <input type="text" id="editPlayer" placeholder="참가자 ID" />
     <select id="editResult">
@@ -107,6 +145,112 @@
     <p id="editStatus" class="status-text"></p>
   </div>
 
-  <script src="admin-match.js"></script>
+  <script type="module">
+    import { db } from "./firebase.js";
+    import { ref, get, update, remove } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
+
+    const pageSize = 5;
+    let userPage = 1, deletePage = 1, editPage = 1;
+
+    // 사용자 리스트
+    async function loadUserScoreList() {
+      const snap = await get(ref(db, "users"));
+      const users = snap.exists() ? Object.entries(snap.val()).map(([uid, data]) => ({ id: uid, score: data.score || data.points || 0 })) : [];
+      const total = Math.ceil(users.length / pageSize) || 1;
+      document.getElementById("userTotal").textContent = total;
+      userPage = Math.min(Math.max(userPage, 1), total);
+      document.getElementById("userPageNum").textContent = userPage;
+      const start = (userPage - 1) * pageSize;
+      const list = users.slice(start, start + pageSize);
+      const ul = document.getElementById("userScoreList"); ul.innerHTML = "";
+      list.forEach(u => {
+        const li = document.createElement("li");
+        li.textContent = `${u.id} (${u.score})`;
+        li.onclick = () => { document.getElementById("targetUser").value = u.id; };
+        ul.appendChild(li);
+      });
+    }
+    document.getElementById("userPrev").onclick = () => { userPage--; loadUserScoreList(); };
+    document.getElementById("userNext").onclick = () => { userPage++; loadUserScoreList(); };
+
+    // 매칭 삭제 리스트
+    async function loadDeleteMatchList() {
+      const snap = await get(ref(db, "matchResults"));
+      const ids = snap.exists() ? Object.keys(snap.val()) : [];
+      const total = Math.ceil(ids.length / pageSize) || 1;
+      document.getElementById("deleteTotal").textContent = total;
+      deletePage = Math.min(Math.max(deletePage, 1), total);
+      document.getElementById("deletePageNum").textContent = deletePage;
+      const start = (deletePage - 1) * pageSize;
+      const list = ids.slice(start, start + pageSize);
+      const ul = document.getElementById("deleteMatchList"); ul.innerHTML = "";
+      list.forEach(id => {
+        const li = document.createElement("li");
+        li.textContent = id;
+        li.onclick = () => { document.getElementById("matchIdToDelete").value = id; };
+        ul.appendChild(li);
+      });
+    }
+    document.getElementById("deletePrev").onclick = () => { deletePage--; loadDeleteMatchList(); };
+    document.getElementById("deleteNext").onclick = () => { deletePage++; loadDeleteMatchList(); };
+
+    // 승패 조작 리스트
+    async function loadEditMatchList() {
+      const snap = await get(ref(db, "matchResults"));
+      const ids = snap.exists() ? Object.keys(snap.val()) : [];
+      const total = Math.ceil(ids.length / pageSize) || 1;
+      document.getElementById("editTotal").textContent = total;
+      editPage = Math.min(Math.max(editPage, 1), total);
+      document.getElementById("editPageNum").textContent = editPage;
+      const start = (editPage - 1) * pageSize;
+      const list = ids.slice(start, start + pageSize);
+      const ul = document.getElementById("editMatchList"); ul.innerHTML = "";
+      list.forEach(id => {
+        const li = document.createElement("li");
+        li.textContent = id;
+        li.onclick = () => { document.getElementById("matchIdEdit").value = id; };
+        ul.appendChild(li);
+      });
+    }
+    document.getElementById("editPrev").onclick = () => { editPage--; loadEditMatchList(); };
+    document.getElementById("editNext").onclick = () => { editPage++; loadEditMatchList(); };
+
+    // 기존 함수들 (updateUserScore, deleteMatch, editMatchResult) 그대로 사용
+    window.updateUserScore = async () => {
+      const uid = document.getElementById("targetUser").value;
+      const change = parseInt(document.getElementById("scoreChange").value, 10);
+      if (!uid || isNaN(change)) return;
+      const userRef = ref(db, `users/${uid}/score`);
+      const snap = await get(userRef);
+      const old = snap.exists() ? snap.val() : 0;
+      await update(ref(db, `users/${uid}`), { score: old + change });
+      document.getElementById("scoreResult").textContent = `✅ ${uid} 점수 ${change} 반영`; 
+      loadUserScoreList();
+    };
+
+    window.deleteMatch = async () => {
+      const id = document.getElementById("matchIdToDelete").value;
+      if (!id) return;
+      await remove(ref(db, `matchResults/${id}`));
+      document.getElementById("matchDeleteStatus").textContent = `✅ 매칭 ${id} 삭제됨`;
+      loadDeleteMatchList();
+    };
+
+    window.editMatchResult = async () => {
+      const id = document.getElementById("matchIdEdit").value;
+      const player = document.getElementById("editPlayer").value;
+      const result = document.getElementById("editResult").value;
+      if (!id || !player) return;
+      await update(ref(db, `matchResults/${id}`), { [`results/${player}`]: result });
+      document.getElementById("editStatus").textContent = `✅ ${id}(${player}) 결과 ${result} 처리됨`;
+      loadEditMatchList();
+    };
+
+    document.addEventListener("DOMContentLoaded", () => {
+      loadUserScoreList();
+      loadDeleteMatchList();
+      loadEditMatchList();
+    });
+  </script>
 </body>
 </html>

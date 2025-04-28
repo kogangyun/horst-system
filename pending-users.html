@@ -102,11 +102,15 @@
           span.innerText = id;
 
           const approveBtn = document.createElement("button");
-          approveBtn.innerText = "승인";
-          approveBtn.onclick = () => {
-            update(ref(db, `users/${id}`), { status: "approved" });
-            alert(`${id}님이 승인되었습니다.`);
-          };
+          approveBtn.onclick = async () => {
+          await update(ref(db, `users/${id}`), {
+          status: "approved",
+          points: 1000,
+          score: 1000
+          });
+          alert(`${id}님이 승인되었습니다.`);
+         };
+
 
           const rejectBtn = document.createElement("button");
           rejectBtn.innerText = "거절";

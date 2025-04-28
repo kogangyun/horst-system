@@ -86,14 +86,33 @@ async function fetchClan(userId) {
   return snap.exists() ? snap.val() : "미소속";
 }
 
-// 경기 결과 기록
-async function saveMatchResult(userId, team, result) {
+// ⭐⭐ 수정된: 경기 결과 기록 (map, pointChange 추가)
+async function saveMatchResult(userId, team, result, map, delta) {
   const matchRef = push(ref(db, `history/${userId}`));
   await set(matchRef, {
     team: team,
     result: result,
+    map: map,
+    pointChange: delta,
     timestamp: Date.now(),
   });
+}
+
+// ⭐ 팀별 최고 포인트 사용자 찾기
+function getTeamTopPlayer(team) {
+  const scored = team.map(uid => ({ id: uid, score: rankingMap[uid]?.score || 1000 }));
+  scored.sort((a, b) => b.score - a.score);
+  return scored[0].id;
+}
+
+// 🔥 전체 참가자 중 최고 포인트 사용자 찾기
+function getGlobalTopPlayer(teamA, teamB) {
+  const all = [...teamA, ...teamB].map(uid => ({ id: uid, score: rankingMap[uid]?.score || 1000 }));
+  all.sort((a, b) => b.score - a.score);
+  const topScore = all[0].score;
+  const candidates = all.filter(p => p.score === topScore);
+  const selected = candidates[Math.floor(Math.random() * candidates.length)];
+  return selected.id;
 }
 
 // 매칭 정보 불러오기
@@ -111,11 +130,12 @@ async function loadAndRenderMatch() {
   matchIdDisplay.textContent = `매칭 ID: ${id}`;
   mapCenter.textContent = `맵: ${map}`;
 
-  const captainA = teamA[0];
-  const captainB = teamB[0];
-  const isCaptain = currentUser === captainA || currentUser === captainB;
+  const starA = getTeamTopPlayer(teamA);
+  const starB = getTeamTopPlayer(teamB);
+  const globalTopPlayer = getGlobalTopPlayer(teamA, teamB);
+  const isTopPlayer = currentUser === globalTopPlayer;
 
-  async function makeTeamBox(players, container, fieldId, captain) {
+  async function makeTeamBox(players, container, fieldId) {
     container.innerHTML = "";
     const ul = document.createElement("ul");
 
@@ -124,27 +144,43 @@ async function loadAndRenderMatch() {
       const li = document.createElement("li");
       li.innerHTML = `${renderNickname(p)} [${clan}]`;
 
-      if (p === captain && isCaptain) {
-        const sel = document.createElement("select");
-        sel.id = fieldId;
-        sel.innerHTML = `
-          <option value="">-- 선택 --</option>
-          <option value="win">Win</option>
-          <option value="lose">Lose</option>
-        `;
-        li.appendChild(sel);
+      if (isTopPlayer && (p === starA || p === starB)) {
+        li.innerHTML += ` <span style="color: gold;">⭐</span>`;
+      }
+
+      if (isTopPlayer) {
+        if (p === starA) {
+          const selA = document.createElement("select");
+          selA.id = "resultA";
+          selA.innerHTML = `
+            <option value="">-- 선택 --</option>
+            <option value="win">Win</option>
+            <option value="lose">Lose</option>
+          `;
+          li.appendChild(selA);
+        }
+        if (p === starB) {
+          const selB = document.createElement("select");
+          selB.id = "resultB";
+          selB.innerHTML = `
+            <option value="">-- 선택 --</option>
+            <option value="win">Win</option>
+            <option value="lose">Lose</option>
+          `;
+          li.appendChild(selB);
+        }
       }
       ul.appendChild(li);
     }
     container.appendChild(ul);
   }
 
-  await makeTeamBox(teamA, teamABox, "resultA", captainA);
-  await makeTeamBox(teamB, teamBBox, "resultB", captainB);
+  await makeTeamBox(teamA, teamABox, "resultA");
+  await makeTeamBox(teamB, teamBBox, "resultB");
 
-  if (!isCaptain) {
+  if (!isTopPlayer) {
     submitBtn.disabled = true;
-    submitBtn.textContent = "팀장만 결과 입력 가능";
+    submitBtn.textContent = "최고 포인트 유저만 결과 입력 가능";
   } else {
     submitBtn.onclick = async () => {
       if (appealLink.dataset.clicked === "true") {
@@ -153,7 +189,7 @@ async function loadAndRenderMatch() {
       const resA = document.getElementById("resultA")?.value;
       const resB = document.getElementById("resultB")?.value;
       if (!resA || !resB) {
-        return alert("팀장 승패를 모두 선택해주세요.");
+        return alert("팀 승패를 모두 선택해주세요.");
       }
 
       await set(ref(db, `matchResults/${id}`), {
@@ -171,13 +207,13 @@ async function loadAndRenderMatch() {
         const oldSnap = await get(ref(db, `users/${u}/score`));
         const oldScore = oldSnap.exists() ? oldSnap.val() : 1000;
         updates[`users/${u}/score`] = oldScore + (resA === "win" ? delta : -delta);
-        await saveMatchResult(u, "A", resA);
+        await saveMatchResult(u, "A", resA, map, resA === "win" ? delta : -delta); // 수정
       }
       for (let u of teamB) {
         const oldSnap = await get(ref(db, `users/${u}/score`));
         const oldScore = oldSnap.exists() ? oldSnap.val() : 1000;
         updates[`users/${u}/score`] = oldScore + (resB === "win" ? delta : -delta);
-        await saveMatchResult(u, "B", resB);
+        await saveMatchResult(u, "B", resB, map, resB === "win" ? delta : -delta); // 수정
       }
       await update(ref(db), updates);
 
