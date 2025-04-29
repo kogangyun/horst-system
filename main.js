@@ -121,7 +121,7 @@ async function updateMatchStatus() {
 
     await set(ref(db, "matchQueue"), {});
     await set(ref(db, "currentMatch"), matchData);
-    matchSound.play(match-sound.m4a).catch(console.error);
+    matchSound.play().catch(console.error);
 
     matchResult.innerHTML = `
       <h3>🎮 매칭 완료!</h3>
@@ -242,7 +242,7 @@ onChildAdded(ref(db, "tournament/matches"), snap => {
   const teamA = matchData.teamA || [];
   const teamB = matchData.teamB || [];
   if (teamA.includes(currentUser) || teamB.includes(currentUser)) {
-    matchSound.play(match-sound.m4a).catch(console.error);
+    matchSound.play().catch(console.error);
   }
 });
 
