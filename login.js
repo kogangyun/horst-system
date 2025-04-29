@@ -27,10 +27,10 @@ async function login() {
     const user = snapshot.val();
 
     // 🚫 차단 확인
-    if (user.blocked || false) {
-      errorBox.innerText = "차단된 유저입니다. 관리자에게 문의하세요.";
-      return;
-    }
+if (user.isBlocked) {
+  errorBox.innerText = "차단된 유저입니다. 관리자에게 문의하세요.";
+  return;
+}
 
     // 🔐 비밀번호 확인
     if (user.password !== pw) {

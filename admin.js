@@ -76,7 +76,7 @@ async function renderUserList() {
 
     li.innerHTML = `
       <span>${labelHtml} (${data.role || "user"})</span>
-      <button onclick="banUser('${uid}')" class="ban-btn">❌ 추발</button>
+      <button onclick="banUser('${uid}')" class="ban-btn">🚫 차단</button>
       ${reapproveBtnHtml}
     `;
     listEl.appendChild(li);
@@ -98,16 +98,17 @@ window.banUser = async (uid) => {
   if (!confirm(`${uid} 님을 차단하시겠습니까?`)) return;
   await update(ref(db, `users/${uid}`), { isBlocked: true });
   alert(`${uid} 님 차단됨`);
-  renderBlockedUsers();
+  await renderBlockedUsers();  // ✅ 대기해야 함
   renderUserList();
 };
 
 window.unblockUser = async (uid) => {
   await update(ref(db, `users/${uid}`), { isBlocked: false });
   alert(`${uid} 님 차단 해제됨`);
-  renderBlockedUsers();
+  await renderBlockedUsers();  // ✅ 대기해야 함
   renderUserList();
 };
+
 
 window.reapproveUser = async (uid) => {
   if (!confirm(`${uid}님을 재승인하시겠습니까?`)) return;
