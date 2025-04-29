@@ -21,7 +21,7 @@ const matchIdDisplay = document.getElementById("matchIdDisplay");
 // 변경 감지 플래그
 let isDirty = false;
 document.addEventListener("change", (e) => {
-  if (e.target.id === "resultA" || e.target.id === "resultB") {
+  if (e.target.id === "myResult") {
     isDirty = true;
   }
 });
@@ -75,6 +75,7 @@ function renderNickname(userId, isGlobalTop, isTeamLeader) {
 
   return `<span class="${glowClass}">${userId} (${score})</span>${stars}`;
 }
+
 async function fetchClan(userId) {
   const snap = await get(ref(db, `users/${userId}/clan`));
   return snap.exists() ? snap.val() : "미소속";
@@ -93,19 +94,8 @@ async function saveMatchResult(userId, team, result, map, delta) {
 
 function getTeamTopPlayer(team) {
   const scored = team.map(uid => ({ id: uid, score: rankingMap[uid]?.score || 1000 }));
-  scored.sort((a, b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return a.id.localeCompare(b.id);
-  });
+  scored.sort((a, b) => b.score !== a.score ? b.score - a.score : a.id.localeCompare(b.id));
   return scored[0].id;
-}
-
-function getTopRankedLeader(teamAPlayer, teamBPlayer) {
-  const scoreA = rankingMap[teamAPlayer]?.score || 1000;
-  const scoreB = rankingMap[teamBPlayer]?.score || 1000;
-  if (scoreA > scoreB) return teamAPlayer;
-  if (scoreB > scoreA) return teamBPlayer;
-  return teamAPlayer.localeCompare(teamBPlayer) <= 0 ? teamAPlayer : teamBPlayer;
 }
 
 async function loadAndRenderMatch() {
@@ -118,142 +108,137 @@ async function loadAndRenderMatch() {
   }
 
   const { id, map, teamA, teamB } = snap.val();
-
   matchIdDisplay.textContent = `매칭 ID: ${id}`;
   mapCenter.textContent = `맵: ${map}`;
 
-  const getAverageScore = (team) => {
-    const scores = team.map(uid => rankingMap[uid]?.score || 1000);
-    return scores.reduce((a, b) => a + b, 0) / scores.length;
-  };
-
-  const avgA = getAverageScore(teamA);
-  const avgB = getAverageScore(teamB);
+  const avgA = teamA.reduce((sum, uid) => sum + (rankingMap[uid]?.score || 1000), 0) / teamA.length;
+  const avgB = teamB.reduce((sum, uid) => sum + (rankingMap[uid]?.score || 1000), 0) / teamB.length;
   const diff = Math.abs(avgA - avgB);
   const bonusEligible = diff > 100;
-  const stronger = avgA > avgB ? "A" : avgB > avgA ? "B" : "동일";
-
-  document.getElementById("matchInfo").innerHTML = `
-    <p>
-      평균 포인트 → 🟥 Team A: <strong>${avgA.toFixed(1)}</strong> |
-      🟦 Team B: <strong>${avgB.toFixed(1)}</strong><br>
-      ${bonusEligible
-        ? `<span style="color: gold;">⚡ ${stronger}팀이 더 강합니다. 반대 팀이 이기면 +40 보너스!</span>`
-        : `<span style="color: gray;">보너스 없음 (점수 차이 100 이하)</span>`}
-    </p>
-  `;
 
   const teamAPlayer = getTeamTopPlayer(teamA);
   const teamBPlayer = getTeamTopPlayer(teamB);
 
-// 전역 최고 포인트 플레이어 (⭐⭐)
-const globalTopPlayer = getTopRankedLeader(teamAPlayer, teamBPlayer);
-const globalSubmitter = globalTopPlayer;
-const isSubmitter = currentUser === globalSubmitter;
+  const isSubmitter = currentUser === teamAPlayer || currentUser === teamBPlayer;
 
-async function makeTeamBox(players, container, teamName, isSubmitter) {
-  container.innerHTML = "";
-  const ul = document.createElement("ul");
+  async function makeTeamBox(players, container, teamName) {
+    container.innerHTML = "";
+    const ul = document.createElement("ul");
 
-  for (let p of players) {
-    const clan = await fetchClan(p);
-    const isTeamLeader = (teamName === "A" && p === teamAPlayer) || (teamName === "B" && p === teamBPlayer);
-    const isGlobalTop = p === globalTopPlayer;
+    for (let p of players) {
+      const clan = await fetchClan(p);
+      const isTeamLeader = (teamName === "A" && p === teamAPlayer) || (teamName === "B" && p === teamBPlayer);
+      const isGlobalTop = false; // 팀 내 최고 점수자에만 별 표시
 
-    const li = document.createElement("li");
-    li.innerHTML = `${renderNickname(p, isGlobalTop, isTeamLeader)} [${clan}]`;
+      const li = document.createElement("li");
+      li.innerHTML = `${renderNickname(p, isGlobalTop, isTeamLeader)} [${clan}]`;
 
-    if (isSubmitter && p === currentUser) {
-      const sel = document.createElement("select");
-      sel.id = teamName === "A" ? "resultA" : "resultB";
-      sel.innerHTML = `
-        <option value="">-- 선택 --</option>
-        <option value="win">Win</option>
-        <option value="lose">Lose</option>
-      `;
-      li.appendChild(sel);
-    }    
+      if (isSubmitter && p === currentUser) {
+        const sel = document.createElement("select");
+        sel.id = "myResult";
+        sel.innerHTML = `
+          <option value="">-- 선택 --</option>
+          <option value="win">Win</option>
+          <option value="lose">Lose</option>
+        `;
+        li.appendChild(sel);
+      }
 
-    ul.appendChild(li);
+      ul.appendChild(li);
+    }
+
+    container.appendChild(ul);
   }
 
-  container.appendChild(ul);
-}
+  await makeTeamBox(teamA, teamABox, "A");
+  await makeTeamBox(teamB, teamBBox, "B");
 
-await makeTeamBox(teamA, teamABox, "A", isSubmitter);
-await makeTeamBox(teamB, teamBBox, "B", isSubmitter);
+  if (!isSubmitter) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "팀 최고 점수자만 결과 입력 가능";
+  } else {
+    submitBtn.onclick = async () => {
+      if (appealLink.dataset.clicked === "true") {
+        return alert("이의제기 후에는 결과를 제출할 수 없습니다.");
+      }
 
-if (!isSubmitter) {
-  submitBtn.disabled = true;
-  submitBtn.textContent = "최고 포인트 유저만 결과 입력 가능";
-} else {
-  submitBtn.onclick = async () => {
-    if (appealLink.dataset.clicked === "true") {
-      return alert("이의제기 후에는 결과를 제출할 수 없습니다.");
-    }
+      const myResult = document.getElementById("myResult")?.value;
+      if (!myResult) {
+        return alert("본인 팀 승패를 선택해주세요.");
+      }
 
-    const resA = document.getElementById("resultA")?.value;
-    const resB = document.getElementById("resultB")?.value;
-    if (!resA || !resB) {
-      return alert("팀 승패를 모두 선택해주세요.");
-    }
+      const isInTeamA = teamA.includes(currentUser);
+      const isInTeamB = teamB.includes(currentUser);
 
-    await set(ref(db, `matchResults/${id}`), {
-      map,
-      teamA,
-      resultA: resA,
-      teamB,
-      resultB: resB,
-      timestamp: new Date().toISOString(),
-    });
+      let resA = "";
+      let resB = "";
 
-    const updates = {};
-    const baseDelta = 100;
-    const aWins = resA === "win";
-    const bWins = resB === "win";
-    const bonusForA = bonusEligible && avgA < avgB && aWins ? 40 : 0;
-    const bonusForB = bonusEligible && avgB < avgA && bWins ? 40 : 0;
+      if (isInTeamA) {
+        resA = myResult;
+        resB = myResult === "win" ? "lose" : "win";
+      } else if (isInTeamB) {
+        resB = myResult;
+        resA = myResult === "win" ? "lose" : "win";
+      } else {
+        return alert("당신은 이 매칭에 참가하지 않았습니다.");
+      }
 
-    for (let u of teamA) {
-      const oldSnap = await get(ref(db, `users/${u}/score`));
-      const oldScore = oldSnap.exists() ? oldSnap.val() : 1000;
-      const change = aWins ? baseDelta + bonusForA : -baseDelta;
-      updates[`users/${u}/score`] = oldScore + change;
-      updates[`users/${u}/points`] = oldScore + change;
-      await saveMatchResult(u, "A", resA, map, change);
-    }
+      await set(ref(db, `matchResults/${id}`), {
+        map,
+        teamA,
+        resultA: resA,
+        teamB,
+        resultB: resB,
+        timestamp: new Date().toISOString(),
+      });
 
-    for (let u of teamB) {
-      const oldSnap = await get(ref(db, `users/${u}/score`));
-      const oldScore = oldSnap.exists() ? oldSnap.val() : 1000;
-      const change = bWins ? baseDelta + bonusForB : -baseDelta;
-      updates[`users/${u}/score`] = oldScore + change;
-      updates[`users/${u}/points`] = oldScore + change;
-      await saveMatchResult(u, "B", resB, map, change);
-    }
+      const updates = {};
+      const baseDelta = 100;
+      const aWins = resA === "win";
+      const bWins = resB === "win";
+      const bonusForA = bonusEligible && avgA < avgB && aWins ? 40 : 0;
+      const bonusForB = bonusEligible && avgB < avgA && bWins ? 40 : 0;
 
-    await update(ref(db), updates);
-    await set(ref(db, "currentMatch"), null);
+      for (let u of teamA) {
+        const oldSnap = await get(ref(db, `users/${u}/score`));
+        const oldScore = oldSnap.exists() ? oldSnap.val() : 1000;
+        const change = aWins ? baseDelta + bonusForA : -baseDelta;
+        updates[`users/${u}/score`] = oldScore + change;
+        updates[`users/${u}/points`] = oldScore + change;
+        await saveMatchResult(u, "A", resA, map, change);
+      }
 
-    isDirty = false;
-    window.onbeforeunload = null;
-    alert("✅ 결과가 저장되었습니다.");
-    location.href = "main.html";
-  };
-}
+      for (let u of teamB) {
+        const oldSnap = await get(ref(db, `users/${u}/score`));
+        const oldScore = oldSnap.exists() ? oldSnap.val() : 1000;
+        const change = bWins ? baseDelta + bonusForB : -baseDelta;
+        updates[`users/${u}/score`] = oldScore + change;
+        updates[`users/${u}/points`] = oldScore + change;
+        await saveMatchResult(u, "B", resB, map, change);
+      }
 
-appealLink.addEventListener("click", () => {
-  appealLink.dataset.clicked = "true";
-  isDirty = false;
-});
+      await update(ref(db), updates);
+      await set(ref(db, "currentMatch"), null);
 
-onValue(ref(db, `matchResults/${id}`), (snapRes) => {
-  if (snapRes.exists()) {
-    isDirty = false;
-    window.onbeforeunload = null;
-    location.href = "main.html";
+      isDirty = false;
+      window.onbeforeunload = null;
+      alert("✅ 결과가 저장되었습니다.");
+      location.href = "main.html";
+    };
   }
-});
+
+  appealLink.addEventListener("click", () => {
+    appealLink.dataset.clicked = "true";
+    isDirty = false;
+  });
+
+  onValue(ref(db, `matchResults/${id}`), (snapRes) => {
+    if (snapRes.exists()) {
+      isDirty = false;
+      window.onbeforeunload = null;
+      location.href = "main.html";
+    }
+  });
 }
 
 loadAndRenderMatch();
