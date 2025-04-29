@@ -59,23 +59,6 @@ function getGlowClass(score) {
   return "default-glow";
 }
 
-function renderNickname(userId, isGlobalTop, isTeamLeader) {
-  const info = rankingMap[userId];
-  if (!info) return userId;
-
-  const score = info.score > 3400 ? 3400 : info.score;
-  const glowClass = getGlowClass(score);
-
-  let stars = "";
-  if (isGlobalTop) {
-    stars = ` <span style="color: gold;">⭐⭐</span>`;
-  } else if (isTeamLeader) {
-    stars = ` <span style="color: gold;">⭐</span>`;
-  }
-
-  return `<span class="${glowClass}">${userId} (${score})</span>${stars}`;
-}
-
 async function fetchClan(userId) {
   const snap = await get(ref(db, `users/${userId}/clan`));
   return snap.exists() ? snap.val() : "미소속";
@@ -90,12 +73,6 @@ async function saveMatchResult(userId, team, result, map, delta) {
     pointChange: delta,
     timestamp: Date.now(),
   });
-}
-
-function getTeamTopPlayer(team) {
-  const scored = team.map(uid => ({ id: uid, score: rankingMap[uid]?.score || 1000 }));
-  scored.sort((a, b) => b.score !== a.score ? b.score - a.score : a.id.localeCompare(b.id));
-  return scored[0].id;
 }
 
 async function loadAndRenderMatch() {
@@ -116,10 +93,23 @@ async function loadAndRenderMatch() {
   const diff = Math.abs(avgA - avgB);
   const bonusEligible = diff > 100;
 
-  const teamAPlayer = getTeamTopPlayer(teamA);
-  const teamBPlayer = getTeamTopPlayer(teamB);
+  // ⭐⭐ 별 2개 유저 찾기
+  const allPlayers = [...teamA, ...teamB];
+  const sortedPlayers = allPlayers
+    .map(uid => ({ id: uid, score: rankingMap[uid]?.score || 1000 }))
+    .sort((a, b) => b.score !== a.score ? b.score - a.score : a.id.localeCompare(b.id));
+  const star2Player = sortedPlayers[0].id;
 
-  const isSubmitter = currentUser === teamAPlayer || currentUser === teamBPlayer;
+  // ⭐ 별 1개 유저 찾기 (반대 팀)
+  const isStar2InTeamA = teamA.includes(star2Player);
+  const oppositeTeam = isStar2InTeamA ? teamB : teamA;
+  const sortedOpposite = oppositeTeam
+    .map(uid => ({ id: uid, score: rankingMap[uid]?.score || 1000 }))
+    .sort((a, b) => b.score !== a.score ? b.score - a.score : a.id.localeCompare(b.id));
+  const star1Player = sortedOpposite[0]?.id || "";
+
+  // ⭐⭐ 별 2개 가진 사람만 제출 가능
+  const isSubmitter = currentUser === star2Player;
 
   async function makeTeamBox(players, container, teamName) {
     container.innerHTML = "";
@@ -127,11 +117,20 @@ async function loadAndRenderMatch() {
 
     for (let p of players) {
       const clan = await fetchClan(p);
-      const isTeamLeader = (teamName === "A" && p === teamAPlayer) || (teamName === "B" && p === teamBPlayer);
-      const isGlobalTop = false; // 팀 내 최고 점수자에만 별 표시
+      const score = rankingMap[p]?.score || 0;
+      const isStar2 = p === star2Player;
+      const isStar1 = p === star1Player;
 
+      let stars = "";
+      if (isStar2) {
+        stars = ` <span style="color: gold;">⭐⭐</span>`;
+      } else if (isStar1) {
+        stars = ` <span style="color: gold;">⭐</span>`;
+      }
+
+      const glowClass = getGlowClass(score);
       const li = document.createElement("li");
-      li.innerHTML = `${renderNickname(p, isGlobalTop, isTeamLeader)} [${clan}]`;
+      li.innerHTML = `<span class="${glowClass}">${p} (${score})</span>${stars} [${clan}]`;
 
       if (isSubmitter && p === currentUser) {
         const sel = document.createElement("select");
@@ -155,7 +154,7 @@ async function loadAndRenderMatch() {
 
   if (!isSubmitter) {
     submitBtn.disabled = true;
-    submitBtn.textContent = "팀 최고 점수자만 결과 입력 가능";
+    submitBtn.textContent = "⭐️⭐️ 받은 최고 점수 유저만 결과 입력 가능";
   } else {
     submitBtn.onclick = async () => {
       if (appealLink.dataset.clicked === "true") {
