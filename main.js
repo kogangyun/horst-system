@@ -119,19 +119,30 @@ async function updateMatchStatus() {
       timestamp: new Date().toISOString()
     };
 
-    await set(ref(db, "matchQueue"), {});
-    await set(ref(db, "currentMatch"), matchData);
-    matchSound.play().catch(console.error);
+    try {
+      await set(ref(db, "matchQueue"), {});
+      await set(ref(db, "currentMatch"), matchData);
 
-    matchResult.innerHTML = `
-      <h3>🎮 매칭 완료!</h3>
-      <p><strong>맵:</strong> ${map}</p>
-      <p><strong>팀 A:</strong> ${teams.teamA.map((n, i) => i === 0 ? "⭐" + n : n).join(", ")}</p>
-      <p><strong>팀 B:</strong> ${teams.teamB.map((n, i) => i === 0 ? "⭐" + n : n).join(", ")}</p>
-    `;
+      if (matchSound) {
+        await matchSound.play().catch(e => console.error("🎵 사운드 재생 실패:", e));
+      }
 
-    statusText.innerText = "3초 후 결과 입력 화면으로 이동합니다...";
-    setTimeout(() => location.href = "result.html", 3000);
+      matchResult.innerHTML = `
+        <h3>🎮 매칭 완료!</h3>
+        <p><strong>맵:</strong> ${map}</p>
+        <p><strong>팀 A:</strong> ${teams.teamA.map((n, i) => i === 0 ? "⭐" + n : n).join(", ")}</p>
+        <p><strong>팀 B:</strong> ${teams.teamB.map((n, i) => i === 0 ? "⭐" + n : n).join(", ")}</p>
+      `;
+      statusText.innerText = "3초 후 결과 입력 화면으로 이동합니다...";
+    } catch (error) {
+      console.error("❌ 매칭 저장 중 오류:", error);
+      matchResult.innerHTML = `<h3>⚠️ 매칭 실패</h3><p>오류가 발생했습니다. 3초 후 결과 화면으로 이동합니다.</p>`;
+      statusText.innerText = "⚠️ 오류 발생, 결과화면으로 이동합니다.";
+    } finally {
+      setTimeout(() => {
+        location.href = "result.html";
+      }, 3000);
+    }
   }
 }
 
