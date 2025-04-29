@@ -86,6 +86,7 @@ async function renderUserList() {
   document.getElementById("prevPage").disabled = window.currentPage === 1;
   document.getElementById("nextPage").disabled = window.currentPage === totalPages;
 }
+
 function changePage(direction) {
   const totalPages = parseInt(document.getElementById("totalPages").innerText);
   if (direction === "prev" && window.currentPage > 1) window.currentPage--;
@@ -93,20 +94,25 @@ function changePage(direction) {
   renderUserList();
 }
 window.changePage = changePage;
-
 window.banUser = async (uid) => {
   if (!confirm(`${uid} 님을 차단하시겠습니까?`)) return;
   await update(ref(db, `users/${uid}`), { isBlocked: true });
+
   alert(`${uid} 님 차단됨`);
-  await renderBlockedUsers();  // ✅ 대기해야 함
-  renderUserList();
+
+  // 새로고침을 시간 지연 없이 await으로 순차 처리
+  await renderBlockedUsers();
+  await renderUserList();
 };
+
 
 window.unblockUser = async (uid) => {
   await update(ref(db, `users/${uid}`), { isBlocked: false });
+
   alert(`${uid} 님 차단 해제됨`);
-  await renderBlockedUsers();  // ✅ 대기해야 함
-  renderUserList();
+
+  await renderBlockedUsers();
+  await renderUserList();
 };
 
 
@@ -123,6 +129,7 @@ async function renderBlockedUsers() {
   const q = query(ref(db, "users"), orderByChild("isBlocked"), equalTo(true));
   const snap = await get(q);
   if (!snap.exists()) return;
+
   Object.entries(snap.val()).forEach(([uid, data]) => {
     const labelHtml = renderUserLabel({ name: uid, score: data.points || 0 });
     const li = document.createElement("li");
@@ -181,6 +188,7 @@ async function renderNotices() {
     noticeUl.innerHTML = "<li>공지사항 로딩 오류</li>";
   }
 }
+
 window.deleteNotice = async (index) => {
   const snap = await get(ref(db, "notices"));
   if (!snap.exists()) return;
@@ -199,6 +207,7 @@ async function renderDisputes() {
   tbody.innerHTML = "";
   const snap = await get(ref(db, "matchDisputes"));
   if (!snap.exists()) return;
+
   const now = Date.now();
   Object.entries(snap.val()).forEach(([matchId, disp]) => {
     const ts = new Date(disp.timestamp).getTime();
@@ -253,11 +262,13 @@ document.getElementById("noticeForm")?.addEventListener("submit", async (e) => {
   renderNotices();
 });
 
+// 로그아웃
 window.logout = () => {
   localStorage.removeItem("currentUser");
   location.href = "index.html";
 };
 
+// 전체 유저 포인트 초기화
 window.hardResetPoints = async () => {
   if (!confirm("정말 모든 유저 포인트를 초기화하시겠습니까?")) return;
 
@@ -275,11 +286,12 @@ window.hardResetPoints = async () => {
   renderUserList();
 };
 
+// 버튼 이벤트 등록
 document.getElementById("hardResetBtn")?.addEventListener("click", window.hardResetPoints);
 
-document.addEventListener("DOMContentLoaded", () => {
-  renderUserList();
-  renderBlockedUsers();
-  renderNotices();
-  renderDisputes();
+window.addEventListener("DOMContentLoaded", async () => {
+  await renderUserList();
+  await renderBlockedUsers();
+  await renderDisputes();
+  await renderNotices();
 });
