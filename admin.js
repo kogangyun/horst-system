@@ -86,7 +86,6 @@ async function renderUserList() {
   document.getElementById("prevPage").disabled = window.currentPage === 1;
   document.getElementById("nextPage").disabled = window.currentPage === totalPages;
 }
-
 function changePage(direction) {
   const totalPages = parseInt(document.getElementById("totalPages").innerText);
   if (direction === "prev" && window.currentPage > 1) window.currentPage--;
@@ -126,9 +125,21 @@ async function renderBlockedUsers() {
   Object.entries(snap.val()).forEach(([uid, data]) => {
     const labelHtml = renderUserLabel({ name: uid, score: data.points || 0 });
     const li = document.createElement("li");
+
+    let reapproveBtnHtml = "";
+    if (data.approvedAt) {
+      const approvedTime = new Date(data.approvedAt).getTime();
+      const now = Date.now();
+      const daysSinceApproval = (now - approvedTime) / (1000 * 60 * 60 * 24);
+      if (daysSinceApproval > 30) {
+        reapproveBtnHtml = `<button onclick="reapproveUser('${uid}')" class="ban-btn" style="background: limegreen;">🔄 재승인</button>`;
+      }
+    }
+
     li.innerHTML = `
       <span>${labelHtml}</span>
       <button onclick="unblockUser('${uid}')" class="ban-btn">차단 해제</button>
+      ${reapproveBtnHtml}
     `;
     ul.appendChild(li);
   });
@@ -169,7 +180,6 @@ async function renderNotices() {
     noticeUl.innerHTML = "<li>공지사항 로딩 오류</li>";
   }
 }
-
 window.deleteNotice = async (index) => {
   const snap = await get(ref(db, "notices"));
   if (!snap.exists()) return;
@@ -216,24 +226,28 @@ window.resolveDispute = async (matchId) => {
   renderDisputes();
 };
 
-// 시즌 추가 (✅ 기존 데이터 무조건 덮어쓰기)
+// 시즌 추가
 document.getElementById("seasonForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const val = document.getElementById("seasonInput").value.trim();
   if (!val) return alert("내용을 입력해주세요.");
 
-  await set(ref(db, "notices"), [val]); // ✅ 새 시즌 1줄만 저장
+  await set(ref(db, "notices"), [val]);
   document.getElementById("seasonInput").value = "";
   renderNotices();
 });
 
-// 공지 추가 (✅ 기존 데이터 무조건 덮어쓰기)
+// 공지 추가
 document.getElementById("noticeForm")?.addEventListener("submit", async (e) => {
   e.preventDefault();
   const val = document.getElementById("noticeContent").value.trim();
   if (!val) return alert("내용을 입력해주세요.");
 
-  await set(ref(db, "notices"), [val]); // ✅ 새 공지 1줄만 저장
+  const snap = await get(ref(db, "notices"));
+  const arr = snap.exists() ? (Array.isArray(snap.val()) ? snap.val() : Object.values(snap.val())) : [];
+  arr.push(val);
+  await set(ref(db, "notices"), arr);
+
   document.getElementById("noticeContent").value = "";
   renderNotices();
 });
@@ -244,7 +258,7 @@ window.logout = () => {
 };
 
 window.hardResetPoints = async () => {
-  if (!confirm("정말 모든 유저 포인트를 차단하시겠습니까?")) return;
+  if (!confirm("정말 모든 유저 포인트를 초기화하시겠습니까?")) return;
 
   const snap = await get(ref(db, "users"));
   if (!snap.exists()) return;
@@ -256,7 +270,7 @@ window.hardResetPoints = async () => {
   });
 
   await update(ref(db), updates);
-  alert("✅ 포인트 차단 완료");
+  alert("✅ 포인트 초기화 완료");
   renderUserList();
 };
 

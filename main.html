@@ -68,11 +68,12 @@
     <p id="billingInfo">이용 기간 로딩 중...</p>
   </div>
 
-  <!-- 시즌 정보 & 공지사항 로딩 스크립트 -->
+  <!-- 시즌 정보 & 공지사항 로딩 스크립트 바로 아래에 배치 -->
   <script type="module">
     import { db } from "./firebase.js";
     import { ref, child, get, onValue } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 
+    // 로그인 체크 (생략)
     const currentUser = localStorage.getItem('currentUser');
     if (!currentUser) {
       alert('로그인이 필요합니다.');
@@ -83,30 +84,35 @@
       location.href = 'index.html';
     };
 
-    (async () => {
-      const welcomeBox = document.getElementById('welcomeBox');
-      try {
-        const snap = await get(child(ref(db), `users/${currentUser}`));
-        const user = snap.exists() ? snap.val() : {};
-        const clan = user.clanName || '미소속';
-        const score = user.score || 1000;
+// 환영 메시지
+(async () => {
+  const welcomeBox = document.getElementById('welcomeBox');
+  try {
+    const snap = await get(child(ref(db), `users/${currentUser}`));
+    const user = snap.exists() ? snap.val() : {};
+    const clan = user.clanName || '미소속';
+    const score = user.score || 1000;
 
-        let pointClass = "";
-        const displayScore = score > 3400 ? 3400 : score;
-        if (displayScore >= 3000) pointClass = "high-glow";
-        else if (displayScore >= 2600) pointClass = "mid-upper-glow";
-        else if (displayScore >= 2200) pointClass = "middle-glow";
-        else if (displayScore >= 1800) pointClass = "lower-glow";
-        else if (displayScore >= 1200) pointClass = "";
-        else pointClass = "default-glow";
+    // 점수별 색상 클래스 결정
+    let pointClass = "";
+    const displayScore = score > 3400 ? 3400 : score;
 
-        welcomeBox.innerHTML =
-          `<h2><span class="${pointClass}">${currentUser}</span>님 (클랜: ${clan}), HORST에 오신 것을 환영합니다</h2>`;
-      } catch {
-        welcomeBox.innerHTML = `<h2>${currentUser}님, HORST에 오신 것을 환영합니다</h2>`;
-      }
-    })();
+    if (displayScore >= 3000) pointClass = "high-glow";
+    else if (displayScore >= 2600) pointClass = "mid-upper-glow";
+    else if (displayScore >= 2200) pointClass = "middle-glow";
+    else if (displayScore >= 1800) pointClass = "lower-glow";
+    else if (displayScore >= 1200) pointClass = "";
+    else pointClass = "default-glow";
 
+    welcomeBox.innerHTML =
+      `<h2><span class="${pointClass}">${currentUser}</span>님 (클랜: ${clan}), HORST에 오신 것을 환영합니다</h2>`;
+  } catch {
+    welcomeBox.innerHTML =
+      `<h2>${currentUser}님, HORST에 오신 것을 환영합니다</h2>`;
+  }
+})();
+
+    // 이용 기간 표시 (생략)
     (async () => {
       const billingInfo = document.getElementById('billingInfo');
       try {
@@ -130,6 +136,9 @@
       }
     })();
 
+    // **공지(notices) 하나를 읽어서**
+    //  1) 첫 항목 → 시즌 정보
+    //  2) 나머지     → 공지사항
     const seasonList = document.getElementById("seasonList");
     const noticeList = document.getElementById("noticeList");
     onValue(ref(db, "notices"), snap => {
@@ -137,9 +146,11 @@
       seasonList.innerHTML = "";
       noticeList.innerHTML = "";
       if (arr.length > 0) {
+        // 시즌
         const liSeason = document.createElement("li");
         liSeason.textContent = arr[0];
         seasonList.appendChild(liSeason);
+        // 공지
         for (let i = 1; i < arr.length; i++) {
           const li = document.createElement("li");
           li.textContent = arr[i];
@@ -170,23 +181,23 @@
     <div id="tournamentWinnerBox" style="margin-top:30px;"></div>
   </div>
 
-  <!-- 실시간 매칭 -->
-  <div class="box">
-    <div class="section-title">🔍 실시간 매칭</div>
-    <p id="statusText">현재 대기 중...</p>
-    <p id="timer">경과 시간: 0초</p>
-    <button id="joinMatchButton">⚔️ 매칭 참가</button>
-    <button id="cancelMatchButton">❌ 매칭 취소</button>    
-    <div id="matchResult" style="margin-top:20px;"></div>
-  </div>
+<!-- 실시간 매칭 -->
+<div class="box">
+  <div class="section-title">🔍 실시간 매칭</div>
+  <p id="statusText">현재 대기 중...</p>
+  <p id="timer">경과 시간: 0초</p>
+  <button id="joinMatchButton" onclick="joinMatch()">⚔️ 매칭 참가</button>
+  <button id="cancelMatchButton" onclick="cancelMatch()">❌ 매칭 취소</button>
+  <div id="matchResult" style="margin-top:20px;"></div>
+</div>
 
-  <!-- 시즌 정보 -->
+  <!-- 시즌 정보 UL (빈 상태!) -->
   <div class="box">
     <div class="section-title">📅 시즌 정보</div>
     <ul id="seasonList"></ul>
   </div>
 
-  <!-- 공지사항 -->
+  <!-- 공지사항 UL (빈 상태!) -->
   <div class="box">
     <div class="section-title">📢 공지사항</div>
     <ul id="noticeList"></ul>
@@ -195,7 +206,7 @@
   <!-- 매칭 완료 사운드 -->
   <audio id="matchSound" src="assets/match-sound.m4a" preload="auto"></audio>
 
-  <!-- main.js 로직 연결 -->
+  <!-- main.js 로직 -->
   <script type="module" src="main.js"></script>
 
 </body>

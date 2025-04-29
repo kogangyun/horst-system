@@ -80,6 +80,7 @@
       box-shadow: 0 0 10px #ffaa00aa;
     }
   </style>
+
   <!-- Firebase -->
   <script type="module" src="firebase.js"></script>
   <script type="module">
@@ -102,15 +103,15 @@
           span.innerText = id;
 
           const approveBtn = document.createElement("button");
+          approveBtn.innerText = "승인"; // ✅ 추가 완료!
           approveBtn.onclick = async () => {
-          await update(ref(db, `users/${id}`), {
-          status: "approved",
-          points: 1000,
-          score: 1000
-          });
-          alert(`${id}님이 승인되었습니다.`);
-         };
-
+            await update(ref(db, `users/${id}`), {
+              status: "approved",
+              points: 1000,
+              score: 1000
+            });
+            alert(`${id}님이 승인되었습니다.`);
+          };
 
           const rejectBtn = document.createElement("button");
           rejectBtn.innerText = "거절";
@@ -134,6 +135,7 @@
     window.goBack = goBack;
   </script>
 </head>
+
 <body>
   <div class="container">
     <h1>가입 대기자 목록</h1>
